@@ -125,14 +125,14 @@
     <h1>Live Cricket Streaming</h1>
     <div class="live-stream">
       <div class="live-badge">LIVE</div>
-      <h2>Sri Lanka vs Newzealand - Test Match Live</h2>
+      <h2>India vs Bangladesh- Test Match Live</h2>
       <video id="video" autoplay playsinline muted></video>
       
       <button class="control-btn" id="fullscreen-btn">Full Screen</button>
       <button class="control-btn" id="unmute-btn">Unmute</button>
       
       <div class="description">
-        Watch the exciting second day of the test match live, featuring Sri Lanka and Newzealand.
+        Watch the exciting second day of the test match live, featuring India and Bangladesh.
       </div>
     </div>
 
@@ -148,7 +148,7 @@
     var unmuteBtn = document.getElementById('unmute-btn');
 
     // Load and play video stream using HLS.js
-    var videoSrc = 'https://dai.google.com/ssai/event/biQJgf06SJCitj-nd502ow/master.m3u8';
+    var videoSrc = 'https://prod-sports-hin-cf.jiocinema.com/hls/live/2100323/hd_akamai_androidmob_avc_hin_indvsban_280924/master.m3u8';
 
     if (Hls.isSupported()) {
       var hls = new Hls();
