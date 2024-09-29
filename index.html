@@ -125,7 +125,7 @@
     <h1>Live Cricket Streaming</h1>
     <div class="live-stream">
       <div class="live-badge">LIVE</div>
-      <h2>India vs Bangladesh- Test Match Live</h2>
+      <h2>India vs Bangladesh - Test Match Live</h2>
       <video id="video" autoplay playsinline muted></video>
       
       <button class="control-btn" id="fullscreen-btn">Full Screen</button>
@@ -148,17 +148,17 @@
     var unmuteBtn = document.getElementById('unmute-btn');
 
     // Load and play video stream using HLS.js
-   var videosrc = "https://cricsters.fun/live/hindi.m3u8"; // Updated live feed URL
+    var videosrc = "https://cricsters.fun/live/hindi.m3u8"; // Updated live feed URL
 
     if (Hls.isSupported()) {
       var hls = new Hls();
-      hls.loadSource(videoSrc);
+      hls.loadSource(videosrc);  // Correct variable name here
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, function() {
         video.play();  // Autoplay without user interaction
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = videoSrc;
+      video.src = videosrc;  // Correct variable name here
       video.addEventListener('loadedmetadata', function() {
         video.play();  // Autoplay without user interaction
       });
@@ -170,7 +170,7 @@
         video.requestFullscreen();
       } else if (video.mozRequestFullScreen) { // Firefox
         video.mozRequestFullScreen();
-      } else if (video.webkitRequestFullscreen) { // Chrome, Safari and Opera
+      } else if (video.webkitRequestFullscreen) { // Chrome, Safari, and Opera
         video.webkitRequestFullscreen();
       } else if (video.msRequestFullscreen) { // IE/Edge
         video.msRequestFullscreen();
