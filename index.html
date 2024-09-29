@@ -148,17 +148,17 @@
     var unmuteBtn = document.getElementById('unmute-btn');
 
     // Load and play video stream using HLS.js
-    var videosrc = "https://samarthsattani66.github.io/BOSS/"; // Updated live feed URL
+    var videoSrc = "https://prod-sports-hin-cf.jiocinema.com/hls/live/2100323/hd_akamai_androidmob_avc_hin_indvsban_290924/master.m3u8"; // Updated live feed URL
 
     if (Hls.isSupported()) {
       var hls = new Hls();
-      hls.loadSource(videosrc);  // Correct variable name here
+      hls.loadSource(videoSrc);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, function() {
         video.play();  // Autoplay without user interaction
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = videosrc;  // Correct variable name here
+      video.src = videoSrc;
       video.addEventListener('loadedmetadata', function() {
         video.play();  // Autoplay without user interaction
       });
@@ -170,7 +170,7 @@
         video.requestFullscreen();
       } else if (video.mozRequestFullScreen) { // Firefox
         video.mozRequestFullScreen();
-      } else if (video.webkitRequestFullscreen) { // Chrome, Safari, and Opera
+      } else if (video.webkitRequestFullscreen) { // Chrome, Safari and Opera
         video.webkitRequestFullscreen();
       } else if (video.msRequestFullscreen) { // IE/Edge
         video.msRequestFullscreen();
@@ -200,4 +200,4 @@
   </script>
 
 </body>
-</html>
+  </html>
