@@ -4,10 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Live Cricket Streaming</title>
+
+  <!-- Video.js CSS -->
+  <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
+
   <style>
     /* Global Styles */
     body {
-      font-family: 'Arial', sans-serif;
+      font-family: 'Roboto', sans-serif;
       background-color: #121212;
       color: #ffffff;
       margin: 0;
@@ -25,21 +29,21 @@
     /* Header */
     h1 {
       color: #ffcc00;
-      font-size: 2.5em;
-      margin-bottom: 20px;
+      font-size: 2.1em;
+      margin-bottom: 15px;
     }
 
     /* Live Stream Section */
     .live-stream {
-      background-color: #333;
+      background-color: #2d2d2d;
       padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
       position: relative;
     }
 
     .live-stream h2 {
-      font-size: 1.8em;
+      font-size: 1.6em;
       color: #ffcc00;
       margin-bottom: 10px;
     }
@@ -54,52 +58,58 @@
       padding: 5px 10px;
       border-radius: 5px;
       font-weight: bold;
-      font-size: 0.9em;
+      font-size: 0.85em;
     }
 
-    /* Video Player */
-    #video {
+    /* Video.js Player */
+    .video-js {
       width: 100%;
       height: auto;
-      border-radius: 10px;
-      border: 3px solid #ff6f00;
+      border-radius: 15px; /* Round edges */
       box-shadow: 0 6px 15px rgba(0, 0, 0, 0.8);
-      outline: none;
       display: block;
-    }
-
-    /* Control Buttons */
-    .control-btn {
-      margin-top: 10px;
-      padding: 10px 20px;
-      background-color: #ff6f00;
-      border: none;
-      color: white;
-      font-size: 1.1em;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s, transform 0.2s;
-      display: inline-block;
-      margin-right: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-    }
-
-    .control-btn:hover {
-      background-color: #e65c00;
-      transform: scale(1.05);
+      max-height: 400px;
     }
 
     /* Description */
     .description {
       margin-top: 15px;
-      font-size: 1.2em;
+      font-size: 1em;
       color: #cccccc;
+    }
+
+    /* Join Us Section */
+    .join-section {
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    .join-section a {
+      display: inline-block;
+      text-decoration: none;
+      color: #ffffff;
+      background-color: #ff6f00;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 0.95em;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+
+    .join-section a:hover {
+      background-color: #ffcc00;
+    }
+
+    .join-message {
+      font-size: 0.95em;
+      color: #ffcc00;
+      margin-top: 10px;
     }
 
     /* Footer */
     .footer {
       margin-top: 30px;
-      font-size: 0.9em;
+      font-size: 0.85em;
       color: #888888;
     }
 
@@ -110,11 +120,24 @@
       }
 
       h1 {
-        font-size: 2em;
+        font-size: 1.9em;
       }
 
       .live-stream h2 {
-        font-size: 1.5em;
+        font-size: 1.4em;
+      }
+
+      .video-js {
+        max-height: 250px;
+      }
+
+      .join-section a {
+        font-size: 0.9em;
+        padding: 8px 18px;
+      }
+
+      .join-message {
+        font-size: 0.85em;
       }
     }
   </style>
@@ -126,78 +149,63 @@
     <div class="live-stream">
       <div class="live-badge">LIVE</div>
       <h2>India vs Bangladesh - Test Match Live</h2>
-      <video id="video" autoplay playsinline muted></video>
-      
-      <button class="control-btn" id="fullscreen-btn">Full Screen</button>
-      <button class="control-btn" id="unmute-btn">Unmute</button>
-      
+      <video
+        id="video"
+        class="video-js vjs-default-skin"
+        controls
+        preload="auto"
+        autoplay
+        playsinline
+        muted
+        data-setup='{"autoplay": true, "muted": true}'>
+        <source src="https://prod-sports-hin-cf.jiocinema.com/hls/live/2100323/hd_akamai_androidmob_avc_hin_indvsban_300924/master.m3u8" type="application/x-mpegURL">
+        <!-- Video source is HLS stream -->
+      </video>
+
       <div class="description">
-        Watch the exciting Fourth day of the test match live, featuring India and Bangladesh.
+        Watch the thrilling fourth day of the test match live between India and Bangladesh.
+      </div>
+
+      <!-- Join Button and Message -->
+      <div class="join-section">
+        <a href="https://t.me/+NFoX453eVVI4N2M1" target="_blank">Join Now</a>
+        <div class="join-message">
+          Be part of the cricket buzz! Click above to stay connected.
+        </div>
       </div>
     </div>
 
+    <!-- Footer Section -->
     <div class="footer">
-      <p>Powered by <a href="https://t.me/+NFoX453eVVI4N2M1" target="_blank" style="color: #ff6f00; text-decoration: none;">FlickXDrive</a></p>
+      <p>&copy; 2024 FlickXDrive. All rights reserved.</p>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- Video.js Library -->
+  <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+
   <script>
-    var video = document.getElementById('video');
-    var fullscreenBtn = document.getElementById('fullscreen-btn');
-    var unmuteBtn = document.getElementById('unmute-btn');
-
-    // Load and play video stream using HLS.js
-    var videoSrc = "https://prod-sports-hin-cf.jiocinema.com/hls/live/2100323/hd_akamai_androidmob_avc_hin_indvsban_300924/master.m3u8"; // Updated live feed URL
-
-    if (Hls.isSupported()) {
-      var hls = new Hls();
-      hls.loadSource(videoSrc);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, function() {
-        video.play();  // Autoplay without user interaction
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = videoSrc;
-      video.addEventListener('loadedmetadata', function() {
-        video.play();  // Autoplay without user interaction
-      });
-    }
-
-    // Full-Screen Functionality
-    fullscreenBtn.addEventListener('click', function() {
-      if (video.requestFullscreen) {
-        video.requestFullscreen();
-      } else if (video.mozRequestFullScreen) { // Firefox
-        video.mozRequestFullScreen();
-      } else if (video.webkitRequestFullscreen) { // Chrome, Safari and Opera
-        video.webkitRequestFullscreen();
-      } else if (video.msRequestFullscreen) { // IE/Edge
-        video.msRequestFullscreen();
-      }
+    var player = videojs('video', {
+      autoplay: 'any', // Enables autoplay
+      muted: true, // Starts muted
+      controls: true, // Player controls
+      fluid: true // Makes player responsive
     });
 
-    // Unmute Functionality
-    unmuteBtn.addEventListener('click', function() {
-      if (video.muted) {
-        video.muted = false;  // Unmute the video
-        unmuteBtn.textContent = 'Mute';  // Change button text
-      } else {
-        video.muted = true;  // Mute the video
-        unmuteBtn.textContent = 'Unmute';  // Change button text
-      }
+    // Ensure video autoplay on page load
+    player.ready(function() {
+      player.play();
     });
 
-    // Stop the video when the user leaves the page
+    // Pause video when user leaves the page
     document.addEventListener('visibilitychange', function() {
       if (document.hidden) {
-        video.pause();  // Pause the video
-        video.currentTime = 0;  // Reset to the beginning if desired
+        player.pause();
       } else {
-        video.play();  // Resume playing when the user returns
+        player.play();
       }
     });
   </script>
 
 </body>
-  </html>
+</html>
