@@ -24,7 +24,7 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #E50914; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -33,16 +33,16 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <div style="color: #666; font-size: 12px;">Connecting to OMDb...</div>
+        <div style="color:#666; font-size: 12px;">Loading CineMax...</div>
     </div>
     <div id="root"></div>
 
     <script>
-        setTimeout(() => { const el = document.getElementById('loader'); if(el) el.style.display = 'none'; }, 6000);
+        setTimeout(() => { const el = document.getElementById('loader'); if(el) el.style.display = 'none'; }, 5000);
     </script>
 
     <script type="text/babel">
-        // --- FIREBASE CONFIG ---
+        // --- FIREBASE CONFIG (Paste if you have it, else it runs offline) ---
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyBIHCzFY15p1AhD9wwPXS5ugrfVEptEImo",
             authDomain: "cinemax-a3597.firebaseapp.com",
@@ -52,7 +52,6 @@
             appId: "1:603071324966:web:4fc93ca00f3958c1bad7e7"
         };
 
-        // --- INIT FIREBASE ---
         let db, auth;
         try {
             if (typeof firebase !== 'undefined' && !firebase.apps.length) {
@@ -66,32 +65,31 @@
         const { createRoot } = ReactDOM;
 
         // ==========================================
-        // 🔑 PASTE YOUR KEY HERE 👇
+        // 🔑 PASTE YOUR OMDb API KEY HERE 👇
         // ==========================================
         const OMDB_API_KEY = "PASTE_YOUR_KEY_HERE"; 
         // ==========================================
 
-        // --- CONTENT LISTS (OMDb will fetch data for these) ---
-        const HITS_2025 = [
-            "Superman", "The Last of Us", "Stranger Things", "F1", "Mickey 17", 
-            "Captain America: Brave New World", "Thunderbolts", "Blade", "Daredevil: Born Again", 
-            "Ironheart", "Wednesday", "The White Lotus", "Andor", "Squid Game", "Peacemaker",
-            "Avatar: Fire and Ash", "Mission: Impossible - The Final Reckoning", "Tron: Ares"
+        // --- BACKUP DATA (Shows if API Key is missing or fails) ---
+        const BACKUP_DATA = [
+            { Title: "Superman", Year: "2025", Poster: "https://images.unsplash.com/photo-1535156417766-3139cb801a61?q=80&w=400", imdbRating: "N/A" },
+            { Title: "War 2", Year: "2025", Poster: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=400", imdbRating: "N/A" },
+            { Title: "Dhurandhar", Year: "2025", Poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=400", imdbRating: "N/A" },
+            { Title: "The Last of Us", Year: "2023", Poster: "https://m.media-amazon.com/images/M/MV5BZGUzYTI3M2EtZMmItNTZmYS00NGUyLTkzYWUyLTkzYWUyLmY0ZZmVlXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_SX300.jpg", imdbRating: "8.8" },
+            { Title: "Stranger Things", Year: "2016", Poster: "https://m.media-amazon.com/images/M/MV5BMDZkYmVhNjMtNWU4MC00MDQxLWE3MjYtZGMzZWI1ZjhlNGJmXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_SX300.jpg", imdbRating: "8.7" },
+            { Title: "Mirzapur", Year: "2018", Poster: "https://m.media-amazon.com/images/M/MV5BNjJlYjE2ODMtNDc1Ny00OTI2LTgyZTYtODNlMDQ2ZjI1OTYzXkEyXkFqcGdeQXVyNTgyNTA4MjM@._V1_SX300.jpg", imdbRating: "8.5" },
+            { Title: "Family Man", Year: "2019", Poster: "https://m.media-amazon.com/images/M/MV5BMzRjZWVmMzItNTdmYS00OWEzLTgyOGUtNThiNTU2ZThlYjY0XkEyXkFqcGdeQXVyMTIxMDk2NDE4._V1_SX300.jpg", imdbRating: "8.7" }
         ];
 
-        const BOLLYWOOD_HITS = [
-            "War 2", "Dhurandhar", "Sikandar", "Sunny Sanskari Ki Tulsi Kumari", 
-            "Kis Kisko Pyaar Karoon 2", "Tere Ishk Mein", "Lahore 1947", "Sky Force",
-            "Housefull 5", "Alpha", "The Family Man", "Panchayat", "Mirzapur", 
-            "Paatal Lok", "Khakee: The Bengal Chapter", "Kota Factory", "Farzi",
-            "Heeramandi", "Guns & Gulaabs", "Killer Soup", "The Railway Men"
-        ];
+        // --- TARGET LISTS ---
+        const HITS_2025 = ["Superman", "F1", "Mickey 17", "Captain America: Brave New World", "Thunderbolts", "Blade", "Daredevil: Born Again", "Ironheart", "Wednesday", "The White Lotus", "Squid Game", "Avatar: Fire and Ash", "Tron: Ares"];
+        const BOLLYWOOD = ["War 2", "Dhurandhar", "Sikandar", "Sunny Sanskari Ki Tulsi Kumari", "Kis Kisko Pyaar Karoon 2", "Lahore 1947", "Sky Force", "Housefull 5", "Alpha", "The Family Man", "Panchayat", "Mirzapur", "Paatal Lok", "Khakee: The Bengal Chapter", "Kota Factory", "Farzi"];
 
         const App = () => {
             const [view, setView] = useState('home');
             const [selectedMedia, setSelectedMedia] = useState(null);
             const [user, setUser] = useState(null);
-            const [categories, setCategories] = useState({});
+            const [categories, setCategories] = useState({ spotlight: [], bollywood: [], hollywood: [], trending: [] });
             const [loading, setLoading] = useState(true);
 
             useEffect(() => {
@@ -103,53 +101,64 @@
                 }
 
                 const loadContent = async () => {
-                    if (OMDB_API_KEY ==="1565f457" || OMDB_API_KEY === "") {
-                        alert("Please edit the code and paste your OMDb API Key!");
+                    // Check for Key
+                    if (OMDB_API_KEY === "1565f457" || OMDB_API_KEY === "") {
+                        console.log("No Key provided, using Backup Data");
+                        setCategories({
+                            spotlight: BACKUP_DATA.slice(0, 3),
+                            bollywood: BACKUP_DATA,
+                            hollywood: BACKUP_DATA,
+                            trending: BACKUP_DATA
+                        });
                         setLoading(false);
                         document.getElementById('loader').style.display = 'none';
                         return;
                     }
 
                     try {
-                        // Fetch Helper
                         const fetchOMDB = async (title) => {
-                            const res = await fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(title)}&apikey=${OMDB_API_KEY}`);
-                            const data = await res.json();
-                            if (data.Response === "True") return data;
-                            return null;
+                            try {
+                                const res = await fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(title)}&apikey=${OMDB_API_KEY}`);
+                                const data = await res.json();
+                                return data.Response === "True" ? data : null;
+                            } catch(e) { return null; }
                         };
 
-                        // Fetch Lists in Parallel
-                        const [hits, bolly] = await Promise.all([
-                            Promise.all(HITS_2025.map(fetchOMDB)),
-                            Promise.all(BOLLYWOOD_HITS.map(fetchOMDB))
-                        ]);
+                        // Fetch lists sequentially to prevent rate limiting
+                        const hits = [];
+                        for (const title of HITS_2025) {
+                            const data = await fetchOMDB(title);
+                            if(data) hits.push(data);
+                        }
+                        
+                        const bolly = [];
+                        for (const title of BOLLYWOOD) {
+                            const data = await fetchOMDB(title);
+                            if(data) bolly.push(data);
+                        }
 
-                        const validHits = hits.filter(i => i);
-                        const validBolly = bolly.filter(i => i);
+                        // If API fails completely, use backup
+                        if (hits.length === 0 && bolly.length === 0) {
+                            throw new Error("API Empty");
+                        }
 
-                        // Helper to standardize Year to Number
-                        const getYear = (item) => {
-                            // Handle "2025–" or "2025" format
-                            const y = item.Year ? item.Year.substring(0, 4) : "2000";
-                            return parseInt(y);
-                        };
-
-                        // Sort by Newest
+                        const getYear = (item) => parseInt(item.Year ? item.Year.substring(0, 4) : "2000");
                         const dateSort = (a, b) => getYear(b) - getYear(a);
 
                         setCategories({ 
-                            spotlight: validHits.filter(m => getYear(m) >= 2025).sort(dateSort),
-                            bollywood: validBolly.sort(dateSort),
-                            hollywood: validHits.filter(m => getYear(m) < 2025).sort(dateSort),
-                            // Trending is a mix of high rated items
-                            trending: [...validHits, ...validBolly].filter(m => parseFloat(m.imdbRating) > 7.5).sort(dateSort)
+                            spotlight: hits.filter(m => getYear(m) >= 2025).sort(dateSort),
+                            bollywood: bolly.sort(dateSort),
+                            hollywood: hits.filter(m => getYear(m) < 2025).sort(dateSort),
+                            trending: [...hits, ...bolly].filter(m => parseFloat(m.imdbRating) > 7.5).sort(dateSort)
                         });
 
-                        setLoading(false);
-                        document.getElementById('loader').style.display = 'none';
-
-                    } catch(e) { console.error(e); setLoading(false); }
+                    } catch(e) { 
+                        console.warn("API Failed, using Backup", e);
+                        setCategories({ spotlight: BACKUP_DATA, bollywood: BACKUP_DATA, hollywood: BACKUP_DATA, trending: BACKUP_DATA });
+                    }
+                    
+                    setLoading(false);
+                    document.getElementById('loader').style.display = 'none';
                 };
                 loadContent();
             }, []);
@@ -172,41 +181,45 @@
         const HomeView = ({ categories, loading, onSelect }) => {
             const [search, setSearch] = useState("");
             const [searchResults, setSearchResults] = useState([]);
-            const [searching, setSearching] = useState(false);
+            const [isSearching, setIsSearching] = useState(false);
 
-            const doSearch = async (term) => {
-                setSearch(term);
-                if (!term) return;
-                setSearching(true);
+            const executeSearch = async () => {
+                if (!search.trim()) return;
+                setIsSearching(true);
                 try {
-                    // OMDb Search
-                    const res = await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(term)}&apikey=${OMDB_API_KEY}`);
+                    const res = await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(search)}&apikey=${OMDB_API_KEY}`);
                     const data = await res.json();
                     if (data.Search) setSearchResults(data.Search);
                 } catch(e) {}
-                setSearching(false);
+                setIsSearching(false);
             };
 
             return (
                 <div className="fade-in">
                     <header className="sticky top-0 z-40 bg-black/95 px-4 py-3 border-b border-white/10">
                         <div className="flex justify-between items-center mb-3">
-                            <h1 className="text-2xl font-black text-red-600 tracking-tighter" onClick={()=>setSearch("")}>CINE<span className="text-white">MAX</span></h1>
+                            <h1 className="text-2xl font-black text-red-600 tracking-tighter" onClick={()=>{setSearch(""); setSearchResults([]);}}>CINE<span className="text-white">MAX</span></h1>
                         </div>
-                        <div className="relative">
+                        <div className="flex gap-2">
                             <input 
-                                className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 pl-4 text-sm focus:outline-none focus:border-red-600 text-white placeholder-gray-500"
+                                className="flex-1 bg-gray-900 border border-gray-800 rounded-lg py-2.5 pl-4 text-sm focus:outline-none focus:border-red-600 text-white"
                                 placeholder="Search movies..."
                                 value={search}
-                                onChange={e => doSearch(e.target.value)}
+                                onChange={e => setSearch(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && executeSearch()}
                             />
-                            {search && <button onClick={()=>setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">✕</button>}
+                            <button 
+                                onClick={executeSearch}
+                                className="bg-red-600 text-white px-4 rounded-lg font-bold text-sm active:scale-95 transition-transform"
+                            >
+                                {isSearching ? "..." : "GO"}
+                            </button>
                         </div>
                     </header>
 
                     {loading ? (
                         <div className="h-[60vh] flex items-center justify-center text-gray-500">Loading Library...</div>
-                    ) : search ? (
+                    ) : searchResults.length > 0 ? (
                         <div className="p-4 grid grid-cols-3 gap-3">
                             {searchResults.map(s => <Card key={s.imdbID} item={s} onClick={onSelect} />)}
                         </div>
@@ -217,7 +230,7 @@
                                     <div className="relative aspect-video rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900">
                                         <img 
                                             src={categories.spotlight[0].Poster} 
-                                            className="w-full h-full object-cover object-top opacity-60" 
+                                            className="w-full h-full object-cover opacity-60" 
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                                         <div className="absolute bottom-3 left-3 right-3">
@@ -230,7 +243,7 @@
                             <Section title="🚀 2025 Premieres" items={categories.spotlight} onSelect={onSelect} />
                             <Section title="🇮🇳 Bollywood Hits" items={categories.bollywood} onSelect={onSelect} />
                             <Section title="🔥 Global Trending" items={categories.trending} onSelect={onSelect} />
-                            <Section title="🎬 Hollywood Latest" items={categories.hollywood} onSelect={onSelect} />
+                            <Section title="🎬 Latest Hollywood" items={categories.hollywood} onSelect={onSelect} />
                         </div>
                     )}
                 </div>
@@ -244,7 +257,7 @@
                     <h3 className="text-white font-bold text-base mb-3 border-l-4 border-red-600 pl-3">{title}</h3>
                     <div className="flex overflow-x-auto gap-3 pb-4 pr-4" style={{scrollBehavior:'smooth', WebkitOverflowScrolling: 'touch'}}>
                         {items.map(item => (
-                            <div key={item.imdbID} className="min-w-[110px] w-[110px]" onClick={() => onSelect(item)}>
+                            <div key={item.imdbID || Math.random()} className="min-w-[110px] w-[110px]" onClick={() => onSelect(item)}>
                                 <div className="aspect-[2/3] rounded-lg overflow-hidden relative bg-gray-900 border border-white/5">
                                     {item.Poster !== "N/A" ? 
                                         <img src={item.Poster} className="w-full h-full object-cover" loading="lazy" /> : 
@@ -272,27 +285,24 @@
             const [reviews, setReviews] = useState([]);
             const [showModal, setShowModal] = useState(false);
             
-            // OMDb Details are already loaded, but let's fetch again to get full plot if needed
-            // For now, using media object passed down
-
             useEffect(() => {
                 if (db) {
                     const unsub = db.collection('reviews')
-                        .where('mediaId', '==', String(media.imdbID)) // Use imdbID for OMDb
+                        .where('mediaId', '==', String(media.imdbID || media.Title)) // Fallback to Title if ID missing
                         .onSnapshot(snap => {
                             const list = snap.docs.map(d => d.data());
                             setReviews(list.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)));
                         });
                     return () => unsub();
                 }
-            }, [media.imdbID]);
+            }, [media]);
 
             const postReview = async (e) => {
                 e.preventDefault();
                 if (!user) return alert("Offline. Check internet.");
                 const form = e.target;
                 const data = {
-                    mediaId: String(media.imdbID),
+                    mediaId: String(media.imdbID || media.Title),
                     userId: user.uid,
                     author: form.author.value,
                     content: form.content.value,
