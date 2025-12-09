@@ -14,27 +14,24 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Firebase Compat -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <style>
-        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #E50914; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #E50914; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <div style="color:#666; font-size: 12px;">Loading CineMax...</div>
-    </div>
+    <div id="loader"><div class="spinner"></div></div>
     <div id="root"></div>
 
     <script>
@@ -42,7 +39,7 @@
     </script>
 
     <script type="text/babel">
-        // --- FIREBASE CONFIG (Paste if you have it, else it runs offline) ---
+        // --- FIREBASE CONFIG ---
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyBIHCzFY15p1AhD9wwPXS5ugrfVEptEImo",
             authDomain: "cinemax-a3597.firebaseapp.com",
@@ -52,6 +49,7 @@
             appId: "1:603071324966:web:4fc93ca00f3958c1bad7e7"
         };
 
+        // --- INIT FIREBASE ---
         let db, auth;
         try {
             if (typeof firebase !== 'undefined' && !firebase.apps.length) {
@@ -64,32 +62,39 @@
         const { useState, useEffect } = React;
         const { createRoot } = ReactDOM;
 
-        // ==========================================
-        // 🔑 PASTE YOUR OMDb API KEY HERE 👇
-        // ==========================================
-        const OMDB_API_KEY = "PASTE_YOUR_KEY_HERE"; 
-        // ==========================================
+        // ============================================
+        // 🔑 OMDb API KEY (REQUIRED FOR MOVIES)
+        // ============================================
+        const OMDB_KEY = "1565f457"; 
+        // ============================================
 
-        // --- BACKUP DATA (Shows if API Key is missing or fails) ---
-        const BACKUP_DATA = [
-            { Title: "Superman", Year: "2025", Poster: "https://images.unsplash.com/photo-1535156417766-3139cb801a61?q=80&w=400", imdbRating: "N/A" },
-            { Title: "War 2", Year: "2025", Poster: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=400", imdbRating: "N/A" },
-            { Title: "Dhurandhar", Year: "2025", Poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=400", imdbRating: "N/A" },
-            { Title: "The Last of Us", Year: "2023", Poster: "https://m.media-amazon.com/images/M/MV5BZGUzYTI3M2EtZMmItNTZmYS00NGUyLTkzYWUyLTkzYWUyLmY0ZZmVlXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_SX300.jpg", imdbRating: "8.8" },
-            { Title: "Stranger Things", Year: "2016", Poster: "https://m.media-amazon.com/images/M/MV5BMDZkYmVhNjMtNWU4MC00MDQxLWE3MjYtZGMzZWI1ZjhlNGJmXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_SX300.jpg", imdbRating: "8.7" },
-            { Title: "Mirzapur", Year: "2018", Poster: "https://m.media-amazon.com/images/M/MV5BNjJlYjE2ODMtNDc1Ny00OTI2LTgyZTYtODNlMDQ2ZjI1OTYzXkEyXkFqcGdeQXVyNTgyNTA4MjM@._V1_SX300.jpg", imdbRating: "8.5" },
-            { Title: "Family Man", Year: "2019", Poster: "https://m.media-amazon.com/images/M/MV5BMzRjZWVmMzItNTdmYS00OWEzLTgyOGUtNThiNTU2ZThlYjY0XkEyXkFqcGdeQXVyMTIxMDk2NDE4._V1_SX300.jpg", imdbRating: "8.7" }
+        // --- 1. MOVIE LIST (Fetched via OMDb) ---
+        // Just add names here, API does the rest!
+        const MOVIE_LIST = [
+            "War 2", "Dhurandhar", "Superman", "The Fantastic Four: First Steps", 
+            "Mission: Impossible - The Final Reckoning", "Avatar: Fire and Ash", 
+            "Captain America: Brave New World", "Thunderbolts", "Jurassic World Rebirth", 
+            "Mickey 17", "Tron: Ares", "Blade", "Minecraft: A Minecraft Movie", 
+            "Ballerina", "How to Train Your Dragon", "Zootopia 2",
+            "Sunny Sanskari Ki Tulsi Kumari", "Kis Kisko Pyaar Karoon 2", 
+            "Tere Ishk Mein", "Lahore 1947", "Sky Force", "Housefull 5", 
+            "Sikandar", "Deva", "Thamma", "Pluribus"
         ];
 
-        // --- TARGET LISTS ---
-        const HITS_2025 = ["Superman", "F1", "Mickey 17", "Captain America: Brave New World", "Thunderbolts", "Blade", "Daredevil: Born Again", "Ironheart", "Wednesday", "The White Lotus", "Squid Game", "Avatar: Fire and Ash", "Tron: Ares"];
-        const BOLLYWOOD = ["War 2", "Dhurandhar", "Sikandar", "Sunny Sanskari Ki Tulsi Kumari", "Kis Kisko Pyaar Karoon 2", "Lahore 1947", "Sky Force", "Housefull 5", "Alpha", "The Family Man", "Panchayat", "Mirzapur", "Paatal Lok", "Khakee: The Bengal Chapter", "Kota Factory", "Farzi"];
+        // --- 2. SERIES LIST (Fetched via TVMaze) ---
+        const SERIES_LIST = [
+            "The Last of Us", "Stranger Things", "Wednesday", "Daredevil: Born Again", 
+            "Ironheart", "Andor", "One Piece", "The White Lotus", "Peacemaker", 
+            "Squid Game", "Alien: Earth", "Gen V", "The Family Man", "Panchayat", 
+            "Paatal Lok", "Mirzapur", "Khakee: The Bengal Chapter", "Delhi Crime", 
+            "Rana Naidu", "Mismatched", "Kota Factory", "Farzi", "Citadel: Honey Bunny"
+        ];
 
         const App = () => {
             const [view, setView] = useState('home');
             const [selectedMedia, setSelectedMedia] = useState(null);
             const [user, setUser] = useState(null);
-            const [categories, setCategories] = useState({ spotlight: [], bollywood: [], hollywood: [], trending: [] });
+            const [categories, setCategories] = useState({});
             const [loading, setLoading] = useState(true);
 
             useEffect(() => {
@@ -101,64 +106,48 @@
                 }
 
                 const loadContent = async () => {
-                    // Check for Key
-                    if (OMDB_API_KEY === "1565f457" || OMDB_API_KEY === "") {
-                        console.log("No Key provided, using Backup Data");
-                        setCategories({
-                            spotlight: BACKUP_DATA.slice(0, 3),
-                            bollywood: BACKUP_DATA,
-                            hollywood: BACKUP_DATA,
-                            trending: BACKUP_DATA
-                        });
+                    try {
+                        // 1. Fetch TVMaze Data (Series)
+                        const seriesPromises = SERIES_LIST.map(q => fetch(`https://api.tvmaze.com/singlesearch/shows?q=${q}`).then(r=>r.json()).catch(()=>null));
+                        const seriesData = (await Promise.all(seriesPromises)).filter(i => i && i.id);
+
+                        // 2. Fetch OMDb Data (Movies)
+                        const moviePromises = MOVIE_LIST.map(q => fetch(`https://www.omdbapi.com/?t=${q}&apikey=${OMDB_KEY}`).then(r=>r.json()).catch(()=>null));
+                        const movieDataRaw = await Promise.all(moviePromises);
+
+                        // 3. Normalize OMDb Data to match TVMaze format
+                        const movieData = movieDataRaw.filter(m => m && m.Response === "True").map(m => ({
+                            id: m.imdbID,
+                            name: m.Title,
+                            image: { original: m.Poster, medium: m.Poster },
+                            rating: { average: parseFloat(m.imdbRating) || 0 },
+                            premiered: m.Released !== "N/A" ? new Date(m.Released).toISOString().split('T')[0] : "2025-01-01",
+                            genres: m.Genre ? m.Genre.split(", ") : [],
+                            summary: m.Plot,
+                            type: 'Movie' // Tag as movie
+                        }));
+
+                        // 4. Combine & Sort
+                        const combined = [...seriesData, ...movieData];
+                        const unique = [...new Map(combined.map(item => [item.name, item])).values()];
+                        const dateSort = (a, b) => new Date(b.premiered || '2000') - new Date(a.premiered || '2000');
+
+                        // 5. Categorize
+                        const spotlight = unique.filter(s => s.premiered?.startsWith('2025')).sort(dateSort);
+                        
+                        const bollywood = unique.filter(s => 
+                            MOVIE_LIST.includes(s.name) && (s.language === 'Hindi' || ["War 2", "Dhurandhar", "Panchayat", "Mirzapur"].some(k => s.name.includes(k)))
+                        ).sort(dateSort);
+
+                        const hollywood = unique.filter(s => !bollywood.includes(s)).sort(dateSort);
+                        
+                        const trending = unique.sort((a,b) => (b.rating?.average||0) - (a.rating?.average||0)).slice(0, 25);
+
+                        setCategories({ spotlight, bollywood, hollywood, trending });
                         setLoading(false);
                         document.getElementById('loader').style.display = 'none';
-                        return;
-                    }
 
-                    try {
-                        const fetchOMDB = async (title) => {
-                            try {
-                                const res = await fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(title)}&apikey=${OMDB_API_KEY}`);
-                                const data = await res.json();
-                                return data.Response === "True" ? data : null;
-                            } catch(e) { return null; }
-                        };
-
-                        // Fetch lists sequentially to prevent rate limiting
-                        const hits = [];
-                        for (const title of HITS_2025) {
-                            const data = await fetchOMDB(title);
-                            if(data) hits.push(data);
-                        }
-                        
-                        const bolly = [];
-                        for (const title of BOLLYWOOD) {
-                            const data = await fetchOMDB(title);
-                            if(data) bolly.push(data);
-                        }
-
-                        // If API fails completely, use backup
-                        if (hits.length === 0 && bolly.length === 0) {
-                            throw new Error("API Empty");
-                        }
-
-                        const getYear = (item) => parseInt(item.Year ? item.Year.substring(0, 4) : "2000");
-                        const dateSort = (a, b) => getYear(b) - getYear(a);
-
-                        setCategories({ 
-                            spotlight: hits.filter(m => getYear(m) >= 2025).sort(dateSort),
-                            bollywood: bolly.sort(dateSort),
-                            hollywood: hits.filter(m => getYear(m) < 2025).sort(dateSort),
-                            trending: [...hits, ...bolly].filter(m => parseFloat(m.imdbRating) > 7.5).sort(dateSort)
-                        });
-
-                    } catch(e) { 
-                        console.warn("API Failed, using Backup", e);
-                        setCategories({ spotlight: BACKUP_DATA, bollywood: BACKUP_DATA, hollywood: BACKUP_DATA, trending: BACKUP_DATA });
-                    }
-                    
-                    setLoading(false);
-                    document.getElementById('loader').style.display = 'none';
+                    } catch(e) { console.error(e); setLoading(false); }
                 };
                 loadContent();
             }, []);
@@ -181,61 +170,53 @@
         const HomeView = ({ categories, loading, onSelect }) => {
             const [search, setSearch] = useState("");
             const [searchResults, setSearchResults] = useState([]);
-            const [isSearching, setIsSearching] = useState(false);
 
-            const executeSearch = async () => {
-                if (!search.trim()) return;
-                setIsSearching(true);
-                try {
-                    const res = await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(search)}&apikey=${OMDB_API_KEY}`);
-                    const data = await res.json();
-                    if (data.Search) setSearchResults(data.Search);
-                } catch(e) {}
-                setIsSearching(false);
+            const doSearch = async (term) => {
+                setSearch(term);
+                if (!term) return;
+                // Basic search uses TVMaze for speed, specific movie search needs OMDb logic which is complex for typing
+                // For now, search TVMaze library
+                const res = await fetch(`https://api.tvmaze.com/search/shows?q=${term}`);
+                const data = await res.json();
+                setSearchResults(data.map(d => d.show));
             };
 
             return (
                 <div className="fade-in">
                     <header className="sticky top-0 z-40 bg-black/95 px-4 py-3 border-b border-white/10">
                         <div className="flex justify-between items-center mb-3">
-                            <h1 className="text-2xl font-black text-red-600 tracking-tighter" onClick={()=>{setSearch(""); setSearchResults([]);}}>CINE<span className="text-white">MAX</span></h1>
+                            <h1 className="text-2xl font-black text-red-600 tracking-tighter" onClick={()=>setSearch("")}>CINE<span className="text-white">MAX</span></h1>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="relative">
                             <input 
-                                className="flex-1 bg-gray-900 border border-gray-800 rounded-lg py-2.5 pl-4 text-sm focus:outline-none focus:border-red-600 text-white"
-                                placeholder="Search movies..."
+                                className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 pl-4 text-sm focus:outline-none focus:border-red-600 text-white placeholder-gray-500"
+                                placeholder="Search..."
                                 value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && executeSearch()}
+                                onChange={e => doSearch(e.target.value)}
                             />
-                            <button 
-                                onClick={executeSearch}
-                                className="bg-red-600 text-white px-4 rounded-lg font-bold text-sm active:scale-95 transition-transform"
-                            >
-                                {isSearching ? "..." : "GO"}
-                            </button>
+                            {search && <button onClick={()=>setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">✕</button>}
                         </div>
                     </header>
 
                     {loading ? (
                         <div className="h-[60vh] flex items-center justify-center text-gray-500">Loading Library...</div>
-                    ) : searchResults.length > 0 ? (
+                    ) : search ? (
                         <div className="p-4 grid grid-cols-3 gap-3">
-                            {searchResults.map(s => <Card key={s.imdbID} item={s} onClick={onSelect} />)}
+                            {searchResults.map(s => <Card key={s.id} item={s} onClick={onSelect} />)}
                         </div>
                     ) : (
                         <div className="pb-10 pt-4 space-y-8">
-                            {categories.spotlight && categories.spotlight[0] && (
+                            {categories.spotlight[0] && (
                                 <div className="px-4" onClick={() => onSelect(categories.spotlight[0])}>
                                     <div className="relative aspect-video rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900">
                                         <img 
-                                            src={categories.spotlight[0].Poster} 
-                                            className="w-full h-full object-cover opacity-60" 
+                                            src={categories.spotlight[0].image?.original || categories.spotlight[0].image?.medium} 
+                                            className="w-full h-full object-cover object-top" 
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                                         <div className="absolute bottom-3 left-3 right-3">
                                             <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase mb-1 inline-block shadow">New 2025</span>
-                                            <h2 className="text-xl font-black text-white leading-none drop-shadow-md">{categories.spotlight[0].Title}</h2>
+                                            <h2 className="text-xl font-black text-white leading-none drop-shadow-md">{categories.spotlight[0].name}</h2>
                                         </div>
                                     </div>
                                 </div>
@@ -243,7 +224,7 @@
                             <Section title="🚀 2025 Premieres" items={categories.spotlight} onSelect={onSelect} />
                             <Section title="🇮🇳 Bollywood Hits" items={categories.bollywood} onSelect={onSelect} />
                             <Section title="🔥 Global Trending" items={categories.trending} onSelect={onSelect} />
-                            <Section title="🎬 Latest Hollywood" items={categories.hollywood} onSelect={onSelect} />
+                            <Section title="🎬 Hollywood Latest" items={categories.hollywood} onSelect={onSelect} />
                         </div>
                     )}
                 </div>
@@ -256,15 +237,13 @@
                 <div className="pl-4">
                     <h3 className="text-white font-bold text-base mb-3 border-l-4 border-red-600 pl-3">{title}</h3>
                     <div className="flex overflow-x-auto gap-3 pb-4 pr-4" style={{scrollBehavior:'smooth', WebkitOverflowScrolling: 'touch'}}>
-                        {items.map(item => (
-                            <div key={item.imdbID || Math.random()} className="min-w-[110px] w-[110px]" onClick={() => onSelect(item)}>
+                        {items.slice(0,30).map(item => (
+                            <div key={item.id} className="min-w-[110px] w-[110px]" onClick={() => onSelect(item)}>
                                 <div className="aspect-[2/3] rounded-lg overflow-hidden relative bg-gray-900 border border-white/5">
-                                    {item.Poster !== "N/A" ? 
-                                        <img src={item.Poster} className="w-full h-full object-cover" loading="lazy" /> : 
-                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 p-2 text-center">{item.Title}</div>
-                                    }
+                                    {item.image?.medium && item.image.medium !== "N/A" ? <img src={item.image.medium} className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 p-2 text-center">{item.name}</div>}
+                                    <div className={`absolute top-1 left-1 text-[9px] font-bold px-1 rounded text-white shadow ${item.premiered?.startsWith('2025') ? 'bg-red-600' : 'bg-black/80'}`}>{item.premiered?.substring(0,4)}</div>
                                 </div>
-                                <h4 className="text-gray-300 text-xs mt-1 truncate">{item.Title}</h4>
+                                <h4 className="text-gray-300 text-xs mt-1 truncate">{item.name}</h4>
                             </div>
                         ))}
                     </div>
@@ -275,34 +254,39 @@
         const Card = ({ item, onClick }) => (
             <div onClick={() => onClick(item)} className="cursor-pointer">
                 <div className="aspect-[2/3] rounded-lg bg-gray-900 relative overflow-hidden border border-white/10">
-                    {item.Poster !== "N/A" ? <img src={item.Poster} className="w-full h-full object-cover" /> : null}
+                    {item.image?.medium ? <img src={item.image.medium} className="w-full h-full object-cover" /> : null}
                 </div>
-                <div className="text-xs text-gray-400 mt-1 truncate">{item.Title}</div>
+                <div className="text-xs text-gray-400 mt-1 truncate">{item.name}</div>
             </div>
         );
 
         const DetailsView = ({ media, onBack, user }) => {
             const [reviews, setReviews] = useState([]);
             const [showModal, setShowModal] = useState(false);
-            
+            const [cast, setCast] = useState([]);
+
             useEffect(() => {
+                if(media.type !== 'Movie') {
+                     fetch(`https://api.tvmaze.com/shows/${media.id}/cast`).then(r=>r.json()).then(d=>setCast(d.slice(0,10))).catch(e=>{});
+                }
+
                 if (db) {
                     const unsub = db.collection('reviews')
-                        .where('mediaId', '==', String(media.imdbID || media.Title)) // Fallback to Title if ID missing
+                        .where('mediaId', '==', String(media.id))
                         .onSnapshot(snap => {
                             const list = snap.docs.map(d => d.data());
                             setReviews(list.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)));
                         });
                     return () => unsub();
                 }
-            }, [media]);
+            }, [media.id]);
 
             const postReview = async (e) => {
                 e.preventDefault();
                 if (!user) return alert("Offline. Check internet.");
                 const form = e.target;
                 const data = {
-                    mediaId: String(media.imdbID || media.Title),
+                    mediaId: String(media.id),
                     userId: user.uid,
                     author: form.author.value,
                     content: form.content.value,
@@ -313,31 +297,41 @@
                 setShowModal(false);
             };
 
+            const summary = media.summary ? media.summary.replace(/<[^>]*>/g, '') : "No synopsis available.";
+
             return (
                 <div className="min-h-screen bg-black pb-10 fade-in text-white">
                     <div className="relative w-full aspect-video">
-                        {media.Poster !== "N/A" ? 
-                            <img src={media.Poster} className="w-full h-full object-cover opacity-60 object-top" /> : 
-                            <div className="w-full h-full bg-gray-900"></div>
-                        }
+                        <img src={media.image?.original || media.image?.medium} className="w-full h-full object-cover opacity-60 object-top" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                         <button onClick={onBack} className="absolute top-4 left-4 bg-black/50 p-2 rounded-full text-white backdrop-blur border border-white/20">Back</button>
                     </div>
 
                     <div className="px-5 -mt-12 relative">
-                        <h1 className="text-3xl font-black leading-tight mb-3 drop-shadow-xl">{media.Title}</h1>
+                        <h1 className="text-3xl font-black leading-tight mb-3 drop-shadow-xl">{media.name}</h1>
                         <div className="flex gap-3 text-xs font-bold text-gray-400 mb-5">
-                            <span className="bg-red-600 px-2 py-0.5 rounded text-white shadow">{media.Year}</span>
-                            <span className="text-white flex items-center gap-1">★ {media.imdbRating}</span>
-                            <span>{media.Genre?.split(',')[0]}</span>
+                            <span className="bg-red-600 px-2 py-0.5 rounded text-white shadow">{media.premiered?.substring(0,4)}</span>
+                            <span className="text-white flex items-center gap-1">★ {media.rating?.average}</span>
+                            <span>{media.genres?.[0]}</span>
                         </div>
 
-                        <p className="text-sm text-gray-300 leading-relaxed mb-8 border-l-2 border-gray-700 pl-3">{media.Plot}</p>
+                        <p className="text-sm text-gray-300 leading-relaxed mb-8 border-l-2 border-gray-700 pl-3">{summary}</p>
 
-                        <div className="mb-6">
-                            <h3 className="font-bold text-white text-xs uppercase tracking-wider mb-2">Cast</h3>
-                            <p className="text-sm text-gray-400">{media.Actors}</p>
-                        </div>
+                        {cast.length > 0 && (
+                            <div>
+                                <h3 className="font-bold text-white text-sm mb-3 uppercase tracking-wider">Top Cast</h3>
+                                <div className="flex gap-3 overflow-x-auto pb-4 mb-6 no-scrollbar">
+                                    {cast.map((c, i) => (
+                                        <div key={i} className="min-w-[70px] text-center">
+                                            <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-800 mx-auto mb-2 border border-gray-700">
+                                                <img src={c.person.image?.medium} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="text-[10px] truncate text-gray-400 font-medium">{c.person.name}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="bg-gray-900 rounded-xl p-5 border border-white/5">
                             <div className="flex justify-between items-center mb-4">
@@ -362,7 +356,7 @@
                     {showModal && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={()=>setShowModal(false)}>
                             <div className="bg-gray-900 w-full max-w-sm p-6 rounded-xl border border-gray-700 shadow-2xl" onClick={e=>e.stopPropagation()}>
-                                <h3 className="font-bold text-white mb-4">Rate {media.Title}</h3>
+                                <h3 className="font-bold text-white mb-4">Rate {media.name}</h3>
                                 <form onSubmit={postReview}>
                                     <input name="author" placeholder="Name" className="w-full bg-black border border-gray-700 rounded-lg p-3 mb-3 text-sm text-white focus:border-red-600 outline-none" required />
                                     <select name="rating" className="w-full bg-black border border-gray-700 rounded-lg p-3 mb-3 text-sm text-white focus:border-red-600 outline-none"><option value="5">5 ★★★★★</option><option value="4">4 ★★★★</option><option value="3">3 ★★★</option><option value="2">2 ★★</option><option value="1">1 ★</option></select>
