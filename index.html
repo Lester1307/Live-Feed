@@ -11,41 +11,48 @@
     <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/96/movie-projector.png">
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/180/movie-projector.png">
 
-    <!-- 1. STABLE LIBRARIES (Fixed for GitHub Pages) -->
+    <!-- 1. STABLE LIBRARIES (Cloudflare/Unpkg CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- 2. FIREBASE (Compat Mode) -->
+    <!-- 2. FIREBASE (Compat Mode - Most Stable for Mobile) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <style>
-        body { background-color: #000; color: #fff; font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #000; color: #fff; margin: 0; font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        /* Loader */
-        #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #E50914; border-radius: 50%; animation: spin 1s linear infinite; }
+        
+        /* Loading Screen */
+        #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #E50914; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Smooth Scroll */
+        .scroll-row { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body>
 
-    <div id="loader"><div class="spinner"></div></div>
+    <div id="loader">
+        <div class="spinner"></div>
+        <div style="color:#666; font-size:12px;">Starting CineMax...</div>
+    </div>
     <div id="root"></div>
 
     <script>
-        // Failsafe: Remove loader after 4s
+        // Safety: Remove loader after 4s even if React hangs
         setTimeout(() => { const el = document.getElementById('loader'); if(el) el.style.display = 'none'; }, 4000);
     </script>
 
     <script type="text/babel">
-        // --- 1. CONFIGURATION ---
+        // --- 1. FIREBASE CONFIG (Filled from your screenshot) ---
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyBIHCzFY15p1AhD9wwPXS5ugrfVEptEImo",
             authDomain: "cinemax-a3597.firebaseapp.com",
@@ -55,12 +62,8 @@
             appId: "1:603071324966:web:4fc93ca00f3958c1bad7e7"
         };
 
-        const { useState, useEffect } = React;
-        const { createRoot } = ReactDOM;
-
         // --- 2. INIT FIREBASE ---
-        let db = null;
-        let auth = null;
+        let db, auth;
         try {
             if (typeof firebase !== 'undefined' && !firebase.apps.length) {
                 firebase.initializeApp(FIREBASE_CONFIG);
@@ -69,26 +72,15 @@
             }
         } catch (e) { console.warn("Offline Mode"); }
 
-        // --- 3. DATA LISTS (YOUR EXACT ORDER) ---
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
+
+        // --- 3. DATA LISTS (Exact Order Preserved) ---
         const HITS_2025 = [
-            "NCIS",
-            "Pluribus",
-            "IT: Welcome to Derry",
-            "Superman", 
-            "The Last of Us", 
-            "Stranger Things", 
-            "F1", 
-            "Mickey 17", 
-            "Captain America: Brave New World", 
-            "Thunderbolts", 
-            "Blade", 
-            "Daredevil: Born Again", 
-            "Ironheart", 
-            "Wednesday", 
-            "The White Lotus", 
-            "Andor", 
-            "Euphoria", 
-            "Squid Game"
+            "NCIS", "Pluribus", "IT: Welcome to Derry", "Superman", "The Last of Us", 
+            "Stranger Things", "F1", "Mickey 17", "Captain America: Brave New World", 
+            "Thunderbolts", "Blade", "Daredevil: Born Again", "Ironheart", "Wednesday", 
+            "The White Lotus", "Andor", "Euphoria", "Squid Game"
         ];
 
         const BOLLYWOOD_HITS = [
@@ -108,8 +100,9 @@
             const [loading, setLoading] = useState(true);
 
             useEffect(() => {
-                const screen = document.getElementById('loader');
-                if(screen) screen.style.display = 'none';
+                // Force hide loader
+                const loader = document.getElementById('loader');
+                if(loader) loader.style.display = 'none';
 
                 if (auth) {
                     auth.onAuthStateChanged(u => {
@@ -142,11 +135,11 @@
                             }
                         });
 
-                        // 2. Bollywood: Exact order of BOLLYWOOD_HITS (or by date if preferred)
+                        // 2. Bollywood
                         const uniqueBolly = [...new Map(bolly.map(item => [item['id'], item])).values()];
                         const sortedBolly = uniqueBolly.sort((a, b) => new Date(b.premiered || '2000') - new Date(a.premiered || '2000'));
 
-                        // 3. Hollywood: Filter out existing
+                        // 3. Hollywood
                         const hollywood = mainData.filter(s => 
                             s.language === 'English' && 
                             !sortedSpotlight.some(x => x.id === s.id) && 
@@ -218,7 +211,7 @@
                         </div>
                     ) : (
                         <div className="pb-10 pt-4 space-y-8">
-                            {/* Hero Banner - Shows First Item (NCIS) */}
+                            {/* Hero Banner */}
                             {categories.spotlight && categories.spotlight[0] && (
                                 <div className="px-4" onClick={() => onSelect(categories.spotlight[0])}>
                                     <div className="relative aspect-video rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900">
@@ -228,7 +221,6 @@
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                                         <div className="absolute bottom-3 left-3 right-3">
-                                            {/* LABEL: NEW ARRIVAL */}
                                             <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase mb-1 inline-block shadow">New Arrival</span>
                                             <h2 className="text-xl font-black text-white leading-none drop-shadow-md">{categories.spotlight[0].name}</h2>
                                         </div>
@@ -250,7 +242,7 @@
             return (
                 <div className="pl-4">
                     <h3 className="text-white font-bold text-base mb-3 border-l-4 border-red-600 pl-3">{title}</h3>
-                    <div className="flex overflow-x-auto gap-3 pb-4 pr-4" style={{scrollBehavior:'smooth', WebkitOverflowScrolling: 'touch'}}>
+                    <div className="flex overflow-x-auto gap-3 pb-4 pr-4 scroll-row">
                         {items.slice(0,30).map(item => (
                             <div key={item.id} className="min-w-[110px] w-[110px]" onClick={() => onSelect(item)}>
                                 <div className="aspect-[2/3] rounded-lg overflow-hidden relative bg-gray-900 border border-white/5">
@@ -350,10 +342,11 @@
                         <div className="bg-gray-900 rounded-xl p-5 border border-white/5">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="font-bold text-white text-sm">Reviews ({reviews.length})</h3>
-                                <button onClick={()=>setShowModal(true)} className="bg-white text-black text-xs font-bold px-4 py-2 rounded-full hover:bg-gray-200">Write Review</button>
+                                <button onClick={()=>setShowModal(true)} className="bg-white text-black text-xs font-bold px-4 py-2 rounded-full hover:bg-gray-200">Write</button>
                             </div>
                             <div className="space-y-4">
                                 {reviews.length===0 && <div className="text-center text-xs text-gray-600 py-4">Be the first to review!</div>}
                                 {reviews.map((r,i) => (
                                     <div key={i} className="border-b border-gray-800 pb-3 last:border-0">
-                                        <div
+                                        <div className="flex justify-between text-xs mb-1">
+         
