@@ -4,8 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CineMax</title>
+    
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CineMax">
+
+    <!-- App Logo -->
+    <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/96/movie-projector.png">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/180/movie-projector.png">
 
     <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,7 +32,10 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        /* Loader */
+        /* Smooth Horizontal Scroll */
+        .scroll-row { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+        
+        /* Loading Screen */
         #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #E50914; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -36,11 +47,11 @@
     <div id="root"></div>
 
     <script>
-        setTimeout(() => { const el = document.getElementById('loader'); if(el) el.style.display = 'none'; }, 6000);
+        setTimeout(() => { const el = document.getElementById('loader'); if(el) el.style.display = 'none'; }, 4000);
     </script>
 
     <script type="text/babel">
-        // --- FIREBASE CONFIG ---
+        // --- 1. YOUR CONFIG ---
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyBIHCzFY15p1AhD9wwPXS5ugrfVEptEImo",
             authDomain: "cinemax-a3597.firebaseapp.com",
@@ -50,45 +61,70 @@
             appId: "1:603071324966:web:4fc93ca00f3958c1bad7e7"
         };
 
-        // --- INIT FIREBASE ---
-        let db, auth;
-        try {
-            if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-                firebase.initializeApp(FIREBASE_CONFIG);
-                db = firebase.firestore();
-                auth = firebase.auth();
-            }
-        } catch (e) { console.warn("Offline Mode"); }
-
         const { useState, useEffect } = React;
         const { createRoot } = ReactDOM;
 
-        // ============================================
-        // 🔑 OMDb API KEY (REQUIRED FOR MOVIES)
-        // ============================================
-        const OMDB_KEY = "1565f457"; 
-        // ============================================
+        // --- 2. INIT FIREBASE ---
+        let db = null;
+        let auth = null;
+        try {
+            if (typeof firebase !== 'undefined') {
+                if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+                db = firebase.firestore();
+                auth = firebase.auth();
+            }
+        } catch (e) { console.warn("Running in Offline Mode"); }
 
-        // --- 1. MOVIE LIST (Fetched via OMDb) ---
-        // Just add names here, API does the rest!
-        const MOVIE_LIST = [
-            "War 2", "Dhurandhar", "Superman", "The Fantastic Four: First Steps", 
-            "Mission: Impossible - The Final Reckoning", "Avatar: Fire and Ash", 
-            "Captain America: Brave New World", "Thunderbolts", "Jurassic World Rebirth", 
-            "Mickey 17", "Tron: Ares", "Blade", "Minecraft: A Minecraft Movie", 
-            "Ballerina", "How to Train Your Dragon", "Zootopia 2",
-            "Sunny Sanskari Ki Tulsi Kumari", "Kis Kisko Pyaar Karoon 2", 
-            "Tere Ishk Mein", "Lahore 1947", "Sky Force", "Housefull 5", 
-            "Sikandar", "Deva", "Thamma", "Pluribus"
+        // --- 3. DATA LISTS (YOUR EXACT LISTS) ---
+        const HITS_2025 = [
+            "NCIS",
+            "Pluribus",
+            "IT: Welcome to Derry",
+            "Superman", 
+            "The Last of Us", 
+            "Stranger Things", 
+            "F1", 
+            "Mickey 17", 
+            "Captain America: Brave New World", 
+            "Thunderbolts", 
+            "Blade", 
+            "Daredevil: Born Again", 
+            "Ironheart", 
+            "Wednesday", 
+            "The White Lotus", 
+            "Andor", 
+            "Euphoria", 
+            "Squid Game"
         ];
 
-        // --- 2. SERIES LIST (Fetched via TVMaze) ---
-        const SERIES_LIST = [
-            "The Last of Us", "Stranger Things", "Wednesday", "Daredevil: Born Again", 
-            "Ironheart", "Andor", "One Piece", "The White Lotus", "Peacemaker", 
-            "Squid Game", "Alien: Earth", "Gen V", "The Family Man", "Panchayat", 
-            "Paatal Lok", "Mirzapur", "Khakee: The Bengal Chapter", "Delhi Crime", 
-            "Rana Naidu", "Mismatched", "Kota Factory", "Farzi", "Citadel: Honey Bunny"
+        const BOLLYWOOD_HITS = [
+            "The Family Man", 
+            "Panchayat", 
+            "Paatal Lok", 
+            "Khakee: The Bengal Chapter", 
+            "Mirzapur", 
+            "Rana Naidu", 
+            "Delhi Crime", 
+            "Mismatched", 
+            "Kota Factory",
+            "Heeramandi", 
+            "Citadel: Honey Bunny", 
+            "The Railway Men", 
+            "Farzi",
+            "Rocket Boys", 
+            "Jubilee", 
+            "Kaala Paani", 
+            "Scoop", 
+            "Trial by Fire", 
+            "Dahaad", 
+            "Saas, Bahu Aur Flamingo", 
+            "Asur", 
+            "Scam 2003", 
+            "Made in Heaven", 
+            "Mumbai Diaries", 
+            "Aarya", 
+            "Special OPS", 
+            "Suzhal"
         ];
 
         const App = () => {
@@ -99,6 +135,9 @@
             const [loading, setLoading] = useState(true);
 
             useEffect(() => {
+                const screen = document.getElementById('loader');
+                if(screen) screen.style.display = 'none';
+
                 if (auth) {
                     auth.onAuthStateChanged(u => {
                         if (u) setUser(u);
@@ -108,45 +147,50 @@
 
                 const loadContent = async () => {
                     try {
-                        // 1. Fetch TVMaze Data (Series)
-                        const seriesPromises = SERIES_LIST.map(q => fetch(`https://api.tvmaze.com/singlesearch/shows?q=${q}`).then(r=>r.json()).catch(()=>null));
-                        const seriesData = (await Promise.all(seriesPromises)).filter(i => i && i.id);
+                        const mainRes = await fetch('https://api.tvmaze.com/shows');
+                        const mainData = await mainRes.json();
 
-                        // 2. Fetch OMDb Data (Movies)
-                        const moviePromises = MOVIE_LIST.map(q => fetch(`https://www.omdbapi.com/?t=${q}&apikey=${OMDB_KEY}`).then(r=>r.json()).catch(()=>null));
-                        const movieDataRaw = await Promise.all(moviePromises);
+                        const fetchList = async (list) => {
+                            const p = list.map(q => fetch(`https://api.tvmaze.com/singlesearch/shows?q=${q}`).then(r=>r.json()).catch(()=>null));
+                            return (await Promise.all(p)).filter(i => i && i.id);
+                        };
 
-                        // 3. Normalize OMDb Data to match TVMaze format
-                        const movieData = movieDataRaw.filter(m => m && m.Response === "True").map(m => ({
-                            id: m.imdbID,
-                            name: m.Title,
-                            image: { original: m.Poster, medium: m.Poster },
-                            rating: { average: parseFloat(m.imdbRating) || 0 },
-                            premiered: m.Released !== "N/A" ? new Date(m.Released).toISOString().split('T')[0] : "2025-01-01",
-                            genres: m.Genre ? m.Genre.split(", ") : [],
-                            summary: m.Plot,
-                            type: 'Movie' // Tag as movie
-                        }));
+                        const [hits, bolly] = await Promise.all([fetchList(HITS_2025), fetchList(BOLLYWOOD_HITS)]);
 
-                        // 4. Combine & Sort
-                        const combined = [...seriesData, ...movieData];
-                        const unique = [...new Map(combined.map(item => [item.name, item])).values()];
-                        const dateSort = (a, b) => new Date(b.premiered || '2000') - new Date(a.premiered || '2000');
-
-                        // 5. Categorize
-                        const spotlight = unique.filter(s => s.premiered?.startsWith('2025')).sort(dateSort);
+                        // --- SORTING LOGIC ---
                         
-                        const bollywood = unique.filter(s => 
-                            MOVIE_LIST.includes(s.name) && (s.language === 'Hindi' || ["War 2", "Dhurandhar", "Panchayat", "Mirzapur"].some(k => s.name.includes(k)))
-                        ).sort(dateSort);
+                        // 1. Spotlight: Respects YOUR list order (NCIS first, Pluribus second, etc)
+                        const sortedSpotlight = [];
+                        HITS_2025.forEach(title => {
+                            const found = hits.find(h => h.name.toLowerCase().includes(title.toLowerCase()) || title.toLowerCase().includes(h.name.toLowerCase()));
+                            if (found && !sortedSpotlight.some(s => s.id === found.id)) {
+                                sortedSpotlight.push(found);
+                            }
+                        });
 
-                        const hollywood = unique.filter(s => !bollywood.includes(s)).sort(dateSort);
-                        
-                        const trending = unique.sort((a,b) => (b.rating?.average||0) - (a.rating?.average||0)).slice(0, 25);
+                        // 2. Bollywood: Respects YOUR list order
+                        const sortedBolly = [];
+                         BOLLYWOOD_HITS.forEach(title => {
+                            const found = bolly.find(h => h.name.toLowerCase().includes(title.toLowerCase()) || title.toLowerCase().includes(h.name.toLowerCase()));
+                            if (found && !sortedBolly.some(s => s.id === found.id)) {
+                                sortedBolly.push(found);
+                            }
+                        });
 
-                        setCategories({ spotlight, bollywood, hollywood, trending });
+                        // 3. Hollywood: Everything else sorted by Date
+                        const hollywood = mainData.filter(s => 
+                            s.language === 'English' && 
+                            !sortedSpotlight.some(x => x.id === s.id) && 
+                            !sortedBolly.some(x => x.id === s.id)
+                        ).sort((a, b) => new Date(b.premiered || '2000') - new Date(a.premiered || '2000'));
+
+                        // 4. Trending
+                        const trending = [...sortedSpotlight, ...sortedBolly, ...hollywood]
+                            .filter(s => s.rating?.average >= 8.0)
+                            .slice(0, 30);
+
+                        setCategories({ spotlight: sortedSpotlight, bollywood: sortedBolly, hollywood, trending });
                         setLoading(false);
-                        document.getElementById('loader').style.display = 'none';
 
                     } catch(e) { console.error(e); setLoading(false); }
                 };
@@ -157,7 +201,7 @@
             const goBack = () => { setView('home'); setSelectedMedia(null); };
 
             return (
-                <div className="min-h-screen bg-black text-white pb-12 font-sans">
+                <div className="min-h-screen bg-black text-white font-sans pb-12">
                     <div className={view === 'home' ? 'block' : 'hidden'}>
                         <HomeView categories={categories} loading={loading} onSelect={goDetails} />
                     </div>
@@ -171,77 +215,58 @@
         const HomeView = ({ categories, loading, onSelect }) => {
             const [search, setSearch] = useState("");
             const [searchResults, setSearchResults] = useState([]);
-            const [isSearching, setIsSearching] = useState(false);
 
-            const executeSearch = async () => {
-                if (!search.trim()) return;
-                setIsSearching(true);
-                try {
-                    // OMDb Search (Better for Movies)
-                    const res = await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(search)}&apikey=${OMDB_KEY}`);
-                    const data = await res.json();
-                    if (data.Search) {
-                        // Normalize Search Results
-                        const normalized = data.Search.map(m => ({
-                             id: m.imdbID,
-                             name: m.Title,
-                             image: { medium: m.Poster },
-                             rating: { average: '?' }, // Search doesn't give rating
-                             premiered: m.Year
-                        }));
-                        setSearchResults(normalized);
-                    }
-                } catch(e) {}
-                setIsSearching(false);
+            const doSearch = async (term) => {
+                setSearch(term);
+                if (!term) return;
+                const res = await fetch(`https://api.tvmaze.com/search/shows?q=${term}`);
+                const data = await res.json();
+                setSearchResults(data.map(d => d.show));
             };
 
             return (
                 <div className="fade-in">
                     <header className="sticky top-0 z-40 bg-black/95 px-4 py-3 border-b border-white/10">
                         <div className="flex justify-between items-center mb-3">
-                            <h1 className="text-2xl font-black text-red-600 tracking-tighter" onClick={()=>{setSearch(""); setSearchResults([]);}}>CINE<span className="text-white">MAX</span></h1>
+                            <h1 className="text-2xl font-black text-red-600 tracking-tighter" onClick={()=>setSearch("")}>CINE<span className="text-white">MAX</span></h1>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="relative">
                             <input 
-                                className="flex-1 bg-gray-900 border border-gray-800 rounded-lg py-2.5 pl-4 text-sm focus:outline-none focus:border-red-600 text-white"
-                                placeholder="Search movies..."
+                                className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 pl-4 text-sm focus:outline-none focus:border-red-600 text-white placeholder-gray-500"
+                                placeholder="Search..."
                                 value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && executeSearch()}
+                                onChange={e => doSearch(e.target.value)}
                             />
-                            <button 
-                                onClick={executeSearch}
-                                className="bg-red-600 text-white px-4 rounded-lg font-bold text-sm active:scale-95 transition-transform"
-                            >
-                                {isSearching ? "..." : "GO"}
-                            </button>
+                            {search && <button onClick={()=>setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">✕</button>}
                         </div>
                     </header>
 
                     {loading ? (
                         <div className="h-[60vh] flex items-center justify-center text-gray-500">Loading Library...</div>
-                    ) : searchResults.length > 0 ? (
+                    ) : search ? (
                         <div className="p-4 grid grid-cols-3 gap-3">
                             {searchResults.map(s => <Card key={s.id} item={s} onClick={onSelect} />)}
                         </div>
                     ) : (
                         <div className="pb-10 pt-4 space-y-8">
+                            {/* Hero Banner - Shows First Item in Your List */}
                             {categories.spotlight && categories.spotlight[0] && (
                                 <div className="px-4" onClick={() => onSelect(categories.spotlight[0])}>
                                     <div className="relative aspect-video rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900">
                                         <img 
                                             src={categories.spotlight[0].image?.original || categories.spotlight[0].image?.medium} 
-                                            className="w-full h-full object-cover opacity-60" 
+                                            className="w-full h-full object-cover object-top" 
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                                         <div className="absolute bottom-3 left-3 right-3">
-                                            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase mb-1 inline-block shadow">New 2025</span>
+                                            {/* UPDATED LABEL HERE */}
+                                            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase mb-1 inline-block shadow">New Arrival</span>
                                             <h2 className="text-xl font-black text-white leading-none drop-shadow-md">{categories.spotlight[0].name}</h2>
                                         </div>
                                     </div>
                                 </div>
                             )}
-                            <Section title="🚀 2025 Premieres" items={categories.spotlight} onSelect={onSelect} />
+                            <Section title="🚀 New Arrivals" items={categories.spotlight} onSelect={onSelect} />
                             <Section title="🇮🇳 Bollywood Hits" items={categories.bollywood} onSelect={onSelect} />
                             <Section title="🔥 Global Trending" items={categories.trending} onSelect={onSelect} />
                             <Section title="🎬 Latest Hollywood" items={categories.hollywood} onSelect={onSelect} />
@@ -256,11 +281,11 @@
             return (
                 <div className="pl-4">
                     <h3 className="text-white font-bold text-base mb-3 border-l-4 border-red-600 pl-3">{title}</h3>
-                    <div className="flex overflow-x-auto gap-3 pb-4 pr-4" style={{scrollBehavior:'smooth', WebkitOverflowScrolling: 'touch'}}>
+                    <div className="flex overflow-x-auto gap-3 pb-4 pr-4 scroll-row">
                         {items.slice(0,30).map(item => (
                             <div key={item.id} className="min-w-[110px] w-[110px]" onClick={() => onSelect(item)}>
                                 <div className="aspect-[2/3] rounded-lg overflow-hidden relative bg-gray-900 border border-white/5">
-                                    {item.image?.medium && item.image.medium !== "N/A" ? <img src={item.image.medium} className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 p-2 text-center">{item.name}</div>}
+                                    {item.image?.medium ? <img src={item.image.medium} className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 p-2 text-center">{item.name}</div>}
                                     <div className={`absolute top-1 left-1 text-[9px] font-bold px-1 rounded text-white shadow ${item.premiered?.startsWith('2025') ? 'bg-red-600' : 'bg-black/80'}`}>{item.premiered?.substring(0,4)}</div>
                                 </div>
                                 <h4 className="text-gray-300 text-xs mt-1 truncate">{item.name}</h4>
@@ -274,7 +299,7 @@
         const Card = ({ item, onClick }) => (
             <div onClick={() => onClick(item)} className="cursor-pointer">
                 <div className="aspect-[2/3] rounded-lg bg-gray-900 relative overflow-hidden border border-white/10">
-                    {item.image?.medium && item.image.medium !== "N/A" ? <img src={item.image.medium} className="w-full h-full object-cover" /> : null}
+                    {item.image?.medium ? <img src={item.image.medium} className="w-full h-full object-cover" /> : null}
                 </div>
                 <div className="text-xs text-gray-400 mt-1 truncate">{item.name}</div>
             </div>
@@ -286,15 +311,7 @@
             const [cast, setCast] = useState([]);
 
             useEffect(() => {
-                // Fetch Cast (Only for Series from TVMaze)
-                if(media.type !== 'Movie') {
-                     fetch(`https://api.tvmaze.com/shows/${media.id}/cast`).then(r=>r.json()).then(d=>setCast(d.slice(0,10))).catch(e=>{});
-                } else {
-                    // For OMDb Movies, we fetch full details again to get the Actors string
-                     fetch(`https://www.omdbapi.com/?i=${media.id}&apikey=${OMDB_KEY}`).then(r=>r.json()).then(d=>{
-                         if(d.Actors) setCast([{person: {name: d.Actors}}]); // Simple hack to show string as cast
-                     });
-                }
+                fetch(`https://api.tvmaze.com/shows/${media.id}/cast`).then(r=>r.json()).then(d=>setCast(d.slice(0,10))).catch(e=>{});
 
                 if (db) {
                     const unsub = db.collection('reviews')
@@ -323,10 +340,12 @@
                 setShowModal(false);
             };
 
+            const summary = media.summary ? media.summary.replace(/<[^>]*>/g, '') : "No synopsis available.";
+
             return (
                 <div className="min-h-screen bg-black pb-10 fade-in text-white">
                     <div className="relative w-full aspect-video">
-                        <img src={media.image?.original || media.image?.medium} className="w-full h-full object-cover opacity-60" />
+                        <img src={media.image?.original || media.image?.medium} className="w-full h-full object-cover opacity-60 object-top" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                         <button onClick={onBack} className="absolute top-4 left-4 bg-black/50 p-2 rounded-full text-white backdrop-blur border border-white/20">Back</button>
                     </div>
@@ -335,27 +354,22 @@
                         <h1 className="text-3xl font-black leading-tight mb-3 drop-shadow-xl">{media.name}</h1>
                         <div className="flex gap-3 text-xs font-bold text-gray-400 mb-5">
                             <span className="bg-red-600 px-2 py-0.5 rounded text-white shadow">{media.premiered?.substring(0,4)}</span>
-                            <span className="text-white flex items-center gap-1">★ {media.rating?.average || '-'}</span>
+                            <span className="text-white flex items-center gap-1">★ {media.rating?.average}</span>
                             <span>{media.genres?.[0]}</span>
                         </div>
 
-                        <p className="text-sm text-gray-300 leading-relaxed mb-8 border-l-2 border-gray-700 pl-3">{media.summary ? media.summary.replace(/<[^>]*>/g, '') : "No synopsis."}</p>
+                        <p className="text-sm text-gray-300 leading-relaxed mb-8 border-l-2 border-gray-700 pl-3">{summary}</p>
 
-                        <div className="mb-6">
-                            <h3 className="font-bold text-white text-xs uppercase tracking-wider mb-2">Cast</h3>
-                            {cast.length > 0 ? (
-                                <div className="flex gap-3 overflow-x-auto pb-4 mb-6 no-scrollbar">
-                                    {cast.map((c, i) => (
-                                        <div key={i} className="min-w-[70px] text-center">
-                                            {c.person?.image ? 
-                                                <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-800 mx-auto mb-2 border border-gray-700"><img src={c.person.image.medium} className="w-full h-full object-cover" /></div> 
-                                                : <div className="w-14 h-14 rounded-full bg-gray-800 mx-auto mb-2 flex items-center justify-center text-xs">?</div>
-                                            }
-                                            <div className="text-[10px] truncate text-gray-400 font-medium">{c.person?.name || c.person?.name}</div>
-                                        </div>
-                                    ))}
+                        <h3 className="font-bold text-white text-sm mb-3 uppercase tracking-wider">Top Cast</h3>
+                        <div className="flex gap-3 overflow-x-auto pb-4 mb-6 no-scrollbar">
+                            {cast.map((c, i) => (
+                                <div key={i} className="min-w-[70px] text-center">
+                                    <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-800 mx-auto mb-2 border border-gray-700">
+                                        <img src={c.person.image?.medium} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="text-[10px] truncate text-gray-400 font-medium">{c.person.name}</div>
                                 </div>
-                            ) : <p className="text-xs text-gray-500">Loading cast...</p>}
+                            ))}
                         </div>
 
                         <div className="bg-gray-900 rounded-xl p-5 border border-white/5">
@@ -364,41 +378,4 @@
                                 <button onClick={()=>setShowModal(true)} className="bg-white text-black text-xs font-bold px-4 py-2 rounded-full hover:bg-gray-200">Write</button>
                             </div>
                             <div className="space-y-4">
-                                {reviews.length===0 && <div className="text-center text-xs text-gray-600 py-4">Be the first to review!</div>}
-                                {reviews.map((r,i) => (
-                                    <div key={i} className="border-b border-gray-800 pb-3 last:border-0">
-                                        <div className="flex justify-between text-xs mb-1">
-                                            <span className="font-bold text-white">{r.author}</span>
-                                            <span className="text-red-500 font-bold">★ {r.rating}</span>
-                                        </div>
-                                        <p className="text-xs text-gray-400 leading-relaxed">{r.content}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {showModal && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={()=>setShowModal(false)}>
-                            <div className="bg-gray-900 w-full max-w-sm p-6 rounded-xl border border-gray-700 shadow-2xl" onClick={e=>e.stopPropagation()}>
-                                <h3 className="font-bold text-white mb-4">Rate {media.name}</h3>
-                                <form onSubmit={postReview}>
-                                    <input name="author" placeholder="Name" className="w-full bg-black border border-gray-700 rounded-lg p-3 mb-3 text-sm text-white focus:border-red-600 outline-none" required />
-                                    <select name="rating" className="w-full bg-black border border-gray-700 rounded-lg p-3 mb-3 text-sm text-white focus:border-red-600 outline-none"><option value="5">5 ★★★★★</option><option value="4">4 ★★★★</option><option value="3">3 ★★★</option><option value="2">2 ★★</option><option value="1">1 ★</option></select>
-                                    <textarea name="content" placeholder="Review..." className="w-full bg-black border border-gray-700 rounded-lg p-3 mb-4 text-sm text-white focus:border-red-600 outline-none" rows="3" required></textarea>
-                                    <button className="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700">Post Review</button>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        const root = createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
-
-
+                                {review
