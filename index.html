@@ -11,27 +11,23 @@
     <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/96/movie-projector.png">
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/180/movie-projector.png">
 
-    <!-- 1. STABLE LIBRARIES (Global CDN) -->
+    <!-- 1. STABLE LIBRARIES (Fixed for GitHub Pages) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React 17 is often more stable on older mobile browsers with Babel -->
-    <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- 2. FIREBASE COMPAT (Most reliable for single-file apps) -->
+    <!-- 2. FIREBASE (Compat Mode) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <style>
-        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #000; color: #fff; font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        /* Smooth Scroll */
-        .scroll-row { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-        
         /* Loader */
         #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #E50914; border-radius: 50%; animation: spin 1s linear infinite; }
@@ -44,12 +40,12 @@
     <div id="root"></div>
 
     <script>
-        // Safety: Force remove loader after 5s if app hangs
-        setTimeout(() => { const el = document.getElementById('loader'); if(el) el.style.display = 'none'; }, 5000);
+        // Failsafe: Remove loader after 4s
+        setTimeout(() => { const el = document.getElementById('loader'); if(el) el.style.display = 'none'; }, 4000);
     </script>
 
     <script type="text/babel">
-        // --- CONFIGURATION ---
+        // --- 1. CONFIGURATION ---
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyBIHCzFY15p1AhD9wwPXS5ugrfVEptEImo",
             authDomain: "cinemax-a3597.firebaseapp.com",
@@ -60,8 +56,20 @@
         };
 
         const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
 
-        // --- DATA LISTS (Your Exact Order) ---
+        // --- 2. INIT FIREBASE ---
+        let db = null;
+        let auth = null;
+        try {
+            if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+                firebase.initializeApp(FIREBASE_CONFIG);
+                db = firebase.firestore();
+                auth = firebase.auth();
+            }
+        } catch (e) { console.warn("Offline Mode"); }
+
+        // --- 3. DATA LISTS (YOUR EXACT ORDER) ---
         const HITS_2025 = [
             "NCIS",
             "Pluribus",
@@ -98,23 +106,18 @@
             const [user, setUser] = useState(null);
             const [categories, setCategories] = useState({});
             const [loading, setLoading] = useState(true);
-            const [db, setDb] = useState(null);
 
             useEffect(() => {
-                // Initialize Firebase safely
-                try {
-                    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-                    const firestore = firebase.firestore();
-                    const auth = firebase.auth();
-                    setDb(firestore);
-                    
+                const screen = document.getElementById('loader');
+                if(screen) screen.style.display = 'none';
+
+                if (auth) {
                     auth.onAuthStateChanged(u => {
                         if (u) setUser(u);
-                        else auth.signInAnonymously().catch(e => console.warn(e));
+                        else auth.signInAnonymously().catch(e=>{});
                     });
-                } catch (e) { console.warn("Offline Mode"); }
+                }
 
-                // Load Content
                 const loadContent = async () => {
                     try {
                         const mainRes = await fetch('https://api.tvmaze.com/shows');
@@ -127,7 +130,10 @@
 
                         const [hits, bolly] = await Promise.all([fetchList(HITS_2025), fetchList(BOLLYWOOD_HITS)]);
 
-                        // 1. Spotlight: Exact order of HITS_2025
+                        // --- SORTING LOGIC ---
+                        const hitsMap = new Map(hits.map(i => [i.name.toLowerCase(), i]));
+                        
+                        // 1. New Arrivals: Sort exactly by your list order
                         const sortedSpotlight = [];
                         HITS_2025.forEach(title => {
                             const found = hits.find(h => h.name.toLowerCase().includes(title.toLowerCase()) || title.toLowerCase().includes(h.name.toLowerCase()));
@@ -136,20 +142,15 @@
                             }
                         });
 
-                        // 2. Bollywood: Exact order of BOLLYWOOD_HITS
-                        const sortedBolly = [];
-                        BOLLYWOOD_HITS.forEach(title => {
-                            const found = bolly.find(h => h.name.toLowerCase().includes(title.toLowerCase()) || title.toLowerCase().includes(h.name.toLowerCase()));
-                            if (found && !sortedBolly.some(s => s.id === found.id)) {
-                                sortedBolly.push(found);
-                            }
-                        });
+                        // 2. Bollywood: Exact order of BOLLYWOOD_HITS (or by date if preferred)
+                        const uniqueBolly = [...new Map(bolly.map(item => [item['id'], item])).values()];
+                        const sortedBolly = uniqueBolly.sort((a, b) => new Date(b.premiered || '2000') - new Date(a.premiered || '2000'));
 
-                        // 3. Hollywood: Everything else sorted by Date
+                        // 3. Hollywood: Filter out existing
                         const hollywood = mainData.filter(s => 
                             s.language === 'English' && 
                             !sortedSpotlight.some(x => x.id === s.id) && 
-                            !sortedBolly.some(x => x.id === s.id)
+                            !uniqueBolly.some(x => x.id === s.id)
                         ).sort((a, b) => new Date(b.premiered || '2000') - new Date(a.premiered || '2000'));
 
                         // 4. Trending
@@ -159,8 +160,6 @@
 
                         setCategories({ spotlight: sortedSpotlight, bollywood: sortedBolly, hollywood, trending });
                         setLoading(false);
-                        
-                        document.getElementById('loader').style.display = 'none';
 
                     } catch(e) { console.error(e); setLoading(false); }
                 };
@@ -176,7 +175,7 @@
                         <HomeView categories={categories} loading={loading} onSelect={goDetails} />
                     </div>
                     {view === 'details' && selectedMedia && (
-                        <DetailsView media={selectedMedia} onBack={goBack} user={user} db={db} />
+                        <DetailsView media={selectedMedia} onBack={goBack} user={user} />
                     )}
                 </div>
             );
@@ -202,7 +201,7 @@
                         </div>
                         <div className="relative">
                             <input 
-                                className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 pl-4 text-sm focus:outline-none focus:border-red-600 text-white placeholder-gray-500 transition-all"
+                                className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 pl-4 text-sm focus:outline-none focus:border-red-600 text-white placeholder-gray-500"
                                 placeholder="Search..."
                                 value={search}
                                 onChange={e => doSearch(e.target.value)}
@@ -219,7 +218,7 @@
                         </div>
                     ) : (
                         <div className="pb-10 pt-4 space-y-8">
-                            {/* Hero Banner */}
+                            {/* Hero Banner - Shows First Item (NCIS) */}
                             {categories.spotlight && categories.spotlight[0] && (
                                 <div className="px-4" onClick={() => onSelect(categories.spotlight[0])}>
                                     <div className="relative aspect-video rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900">
@@ -229,6 +228,7 @@
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                                         <div className="absolute bottom-3 left-3 right-3">
+                                            {/* LABEL: NEW ARRIVAL */}
                                             <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase mb-1 inline-block shadow">New Arrival</span>
                                             <h2 className="text-xl font-black text-white leading-none drop-shadow-md">{categories.spotlight[0].name}</h2>
                                         </div>
@@ -250,7 +250,7 @@
             return (
                 <div className="pl-4">
                     <h3 className="text-white font-bold text-base mb-3 border-l-4 border-red-600 pl-3">{title}</h3>
-                    <div className="flex overflow-x-auto gap-3 pb-4 pr-4 scroll-row">
+                    <div className="flex overflow-x-auto gap-3 pb-4 pr-4" style={{scrollBehavior:'smooth', WebkitOverflowScrolling: 'touch'}}>
                         {items.slice(0,30).map(item => (
                             <div key={item.id} className="min-w-[110px] w-[110px]" onClick={() => onSelect(item)}>
                                 <div className="aspect-[2/3] rounded-lg overflow-hidden relative bg-gray-900 border border-white/5">
@@ -274,13 +274,15 @@
             </div>
         );
 
-        const DetailsView = ({ media, onBack, user, db }) => {
+        const DetailsView = ({ media, onBack, user }) => {
             const [reviews, setReviews] = useState([]);
             const [showModal, setShowModal] = useState(false);
             const [cast, setCast] = useState([]);
 
             useEffect(() => {
-                fetch(`https://api.tvmaze.com/shows/${media.id}/cast`).then(r=>r.json()).then(d=>setCast(d.slice(0,10))).catch(e=>{});
+                if(!media.id.toString().startsWith('man_')) {
+                    fetch(`https://api.tvmaze.com/shows/${media.id}/cast`).then(r=>r.json()).then(d=>setCast(d.slice(0,10))).catch(e=>{});
+                }
 
                 if (db) {
                     const unsub = db.collection('reviews')
@@ -348,10 +350,10 @@
                         <div className="bg-gray-900 rounded-xl p-5 border border-white/5">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="font-bold text-white text-sm">Reviews ({reviews.length})</h3>
-                                <button onClick={()=>setShowModal(true)} className="bg-white text-black text-xs font-bold px-4 py-2 rounded-full hover:bg-gray-200">Write</button>
+                                <button onClick={()=>setShowModal(true)} className="bg-white text-black text-xs font-bold px-4 py-2 rounded-full hover:bg-gray-200">Write Review</button>
                             </div>
                             <div className="space-y-4">
                                 {reviews.length===0 && <div className="text-center text-xs text-gray-600 py-4">Be the first to review!</div>}
                                 {reviews.map((r,i) => (
                                     <div key={i} className="border-b border-gray-800 pb-3 last:border-0">
-                                     
+                                        <div
