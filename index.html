@@ -7,14 +7,19 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
 
-    <!-- Libraries -->
+    <!-- App Logo -->
+    <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/96/movie-projector.png">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/180/movie-projector.png">
+
+    <!-- 1. STABLE LIBRARIES (Global CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- React 17 is often more stable on older mobile browsers with Babel -->
+    <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Firebase Compat -->
+    <!-- 2. FIREBASE COMPAT (Most reliable for single-file apps) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -24,12 +29,13 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* Smooth Scroll */
+        .scroll-row { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+        
         /* Loader */
         #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #E50914; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Smooth Scroll */
-        .scroll-row { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body>
@@ -38,11 +44,12 @@
     <div id="root"></div>
 
     <script>
-        setTimeout(() => { const el = document.getElementById('loader'); if(el) el.style.display = 'none'; }, 4000);
+        // Safety: Force remove loader after 5s if app hangs
+        setTimeout(() => { const el = document.getElementById('loader'); if(el) el.style.display = 'none'; }, 5000);
     </script>
 
     <script type="text/babel">
-        // --- YOUR CONFIG ---
+        // --- CONFIGURATION ---
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyBIHCzFY15p1AhD9wwPXS5ugrfVEptEImo",
             authDomain: "cinemax-a3597.firebaseapp.com",
@@ -52,29 +59,32 @@
             appId: "1:603071324966:web:4fc93ca00f3958c1bad7e7"
         };
 
-        // --- INIT FIREBASE ---
-        let db, auth;
-        try {
-            if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-                firebase.initializeApp(FIREBASE_CONFIG);
-                db = firebase.firestore();
-                auth = firebase.auth();
-            }
-        } catch (e) { console.warn("Offline Mode"); }
-
         const { useState, useEffect } = React;
-        const { createRoot } = ReactDOM;
 
-        // --- SEARCH QUERIES (The app will ask the API for these) ---
-        const QUERY_NEW = [
-           "Man vs babdy", "NCIS", "Pluribus", "IT: Welcome to Derry", "Superman", "The Last of Us", 
-            "Stranger Things", "F1", "Mickey 17", "Captain America", 
-            "Thunderbolts", "Blade", "Daredevil: Born Again", "Ironheart", "Wednesday", 
-            "The White Lotus", "Andor", "Euphoria", "Squid Game"
+        // --- DATA LISTS (Your Exact Order) ---
+        const HITS_2025 = [
+            "NCIS",
+            "Pluribus",
+            "IT: Welcome to Derry",
+            "Superman", 
+            "The Last of Us", 
+            "Stranger Things", 
+            "F1", 
+            "Mickey 17", 
+            "Captain America: Brave New World", 
+            "Thunderbolts", 
+            "Blade", 
+            "Daredevil: Born Again", 
+            "Ironheart", 
+            "Wednesday", 
+            "The White Lotus", 
+            "Andor", 
+            "Euphoria", 
+            "Squid Game"
         ];
 
-        const QUERY_BOLLYWOOD = [
-            "The Family Man", "Panchayat", "Paatal Lok", "Khakee", 
+        const BOLLYWOOD_HITS = [
+            "The Family Man", "Panchayat", "Paatal Lok", "Khakee: The Bengal Chapter", 
             "Mirzapur", "Rana Naidu", "Delhi Crime", "Mismatched", "Kota Factory",
             "Heeramandi", "Citadel: Honey Bunny", "The Railway Men", "Farzi",
             "Rocket Boys", "Jubilee", "Kaala Paani", "Scoop", "Trial by Fire", 
@@ -88,15 +98,23 @@
             const [user, setUser] = useState(null);
             const [categories, setCategories] = useState({});
             const [loading, setLoading] = useState(true);
+            const [db, setDb] = useState(null);
 
             useEffect(() => {
-                if (auth) {
+                // Initialize Firebase safely
+                try {
+                    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+                    const firestore = firebase.firestore();
+                    const auth = firebase.auth();
+                    setDb(firestore);
+                    
                     auth.onAuthStateChanged(u => {
                         if (u) setUser(u);
-                        else auth.signInAnonymously().catch(e=>{});
+                        else auth.signInAnonymously().catch(e => console.warn(e));
                     });
-                }
+                } catch (e) { console.warn("Offline Mode"); }
 
+                // Load Content
                 const loadContent = async () => {
                     try {
                         const mainRes = await fetch('https://api.tvmaze.com/shows');
@@ -107,32 +125,44 @@
                             return (await Promise.all(p)).filter(i => i && i.id);
                         };
 
-                        const [hits, bolly] = await Promise.all([fetchList(QUERY_NEW), fetchList(QUERY_BOLLYWOOD)]);
+                        const [hits, bolly] = await Promise.all([fetchList(HITS_2025), fetchList(BOLLYWOOD_HITS)]);
 
-                        // Sort Helpers
-                        const dateSort = (a, b) => new Date(b.premiered || '2000') - new Date(a.premiered || '2000');
-                        
-                        // 1. New Arrivals: Prioritize the QUERY_NEW list order, then by date
-                        const spotlight = [...hits]; // Hits are already somewhat ordered by the query list
+                        // 1. Spotlight: Exact order of HITS_2025
+                        const sortedSpotlight = [];
+                        HITS_2025.forEach(title => {
+                            const found = hits.find(h => h.name.toLowerCase().includes(title.toLowerCase()) || title.toLowerCase().includes(h.name.toLowerCase()));
+                            if (found && !sortedSpotlight.some(s => s.id === found.id)) {
+                                sortedSpotlight.push(found);
+                            }
+                        });
 
-                        // 2. Bollywood
-                        const bollywood = [...bolly].sort(dateSort);
+                        // 2. Bollywood: Exact order of BOLLYWOOD_HITS
+                        const sortedBolly = [];
+                        BOLLYWOOD_HITS.forEach(title => {
+                            const found = bolly.find(h => h.name.toLowerCase().includes(title.toLowerCase()) || title.toLowerCase().includes(h.name.toLowerCase()));
+                            if (found && !sortedBolly.some(s => s.id === found.id)) {
+                                sortedBolly.push(found);
+                            }
+                        });
 
-                        // 3. Hollywood: Filter from Main Data (English + Recent)
+                        // 3. Hollywood: Everything else sorted by Date
                         const hollywood = mainData.filter(s => 
                             s.language === 'English' && 
-                            !spotlight.find(x => x.id === s.id) &&
-                            parseInt(s.premiered?.substring(0,4)) >= 2022
-                        ).sort(dateSort).slice(0, 50);
+                            !sortedSpotlight.some(x => x.id === s.id) && 
+                            !sortedBolly.some(x => x.id === s.id)
+                        ).sort((a, b) => new Date(b.premiered || '2000') - new Date(a.premiered || '2000'));
 
                         // 4. Trending
-                        const trending = mainData.sort((a,b) => (b.rating?.average||0) - (a.rating?.average||0)).slice(0, 30);
+                        const trending = [...sortedSpotlight, ...sortedBolly, ...hollywood]
+                            .filter(s => s.rating?.average >= 8.0)
+                            .slice(0, 30);
 
-                        setCategories({ spotlight, bollywood, hollywood, trending });
+                        setCategories({ spotlight: sortedSpotlight, bollywood: sortedBolly, hollywood, trending });
                         setLoading(false);
+                        
                         document.getElementById('loader').style.display = 'none';
 
-                    } catch(e) { console.error(e); }
+                    } catch(e) { console.error(e); setLoading(false); }
                 };
                 loadContent();
             }, []);
@@ -141,12 +171,12 @@
             const goBack = () => { setView('home'); setSelectedMedia(null); };
 
             return (
-                <div className="min-h-screen bg-black text-white pb-12 font-sans">
+                <div className="min-h-screen bg-black text-white font-sans pb-12">
                     <div className={view === 'home' ? 'block' : 'hidden'}>
                         <HomeView categories={categories} loading={loading} onSelect={goDetails} />
                     </div>
                     {view === 'details' && selectedMedia && (
-                        <DetailsView media={selectedMedia} onBack={goBack} user={user} />
+                        <DetailsView media={selectedMedia} onBack={goBack} user={user} db={db} />
                     )}
                 </div>
             );
@@ -172,7 +202,7 @@
                         </div>
                         <div className="relative">
                             <input 
-                                className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 pl-4 text-sm focus:outline-none focus:border-red-600 text-white placeholder-gray-500"
+                                className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 pl-4 text-sm focus:outline-none focus:border-red-600 text-white placeholder-gray-500 transition-all"
                                 placeholder="Search..."
                                 value={search}
                                 onChange={e => doSearch(e.target.value)}
@@ -189,6 +219,7 @@
                         </div>
                     ) : (
                         <div className="pb-10 pt-4 space-y-8">
+                            {/* Hero Banner */}
                             {categories.spotlight && categories.spotlight[0] && (
                                 <div className="px-4" onClick={() => onSelect(categories.spotlight[0])}>
                                     <div className="relative aspect-video rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900">
@@ -243,7 +274,7 @@
             </div>
         );
 
-        const DetailsView = ({ media, onBack, user }) => {
+        const DetailsView = ({ media, onBack, user, db }) => {
             const [reviews, setReviews] = useState([]);
             const [showModal, setShowModal] = useState(false);
             const [cast, setCast] = useState([]);
@@ -298,17 +329,21 @@
 
                         <p className="text-sm text-gray-300 leading-relaxed mb-8 border-l-2 border-gray-700 pl-3">{summary}</p>
 
-                        <h3 className="font-bold text-white text-sm mb-3 uppercase tracking-wider">Top Cast</h3>
-                        <div className="flex gap-3 overflow-x-auto pb-4 mb-6 no-scrollbar">
-                            {cast.map((c, i) => (
-                                <div key={i} className="min-w-[70px] text-center">
-                                    <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-800 mx-auto mb-2 border border-gray-700">
-                                        <img src={c.person.image?.medium} className="w-full h-full object-cover" />
-                                    </div>
-                                    <div className="text-[10px] truncate text-gray-400 font-medium">{c.person.name}</div>
+                        {cast.length > 0 && (
+                            <div>
+                                <h3 className="font-bold text-white text-sm mb-3 uppercase tracking-wider">Top Cast</h3>
+                                <div className="flex gap-3 overflow-x-auto pb-4 mb-6 no-scrollbar">
+                                    {cast.map((c, i) => (
+                                        <div key={i} className="min-w-[70px] text-center">
+                                            <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-800 mx-auto mb-2 border border-gray-700">
+                                                <img src={c.person.image?.medium} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="text-[10px] truncate text-gray-400 font-medium">{c.person.name}</div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        )}
 
                         <div className="bg-gray-900 rounded-xl p-5 border border-white/5">
                             <div className="flex justify-between items-center mb-4">
@@ -319,22 +354,4 @@
                                 {reviews.length===0 && <div className="text-center text-xs text-gray-600 py-4">Be the first to review!</div>}
                                 {reviews.map((r,i) => (
                                     <div key={i} className="border-b border-gray-800 pb-3 last:border-0">
-                                        <div className="flex justify-between text-xs mb-1">
-                                            <span className="font-bold text-white">{r.author}</span>
-                                            <span className="text-red-500 font-bold">★ {r.rating}</span>
-                                        </div>
-                                        <p className="text-xs text-gray-400 leading-relaxed">{r.content}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {showModal && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={()=>setShowModal(false)}>
-                            <div className="bg-gray-900 w-full max-w-sm p-6 rounded-xl border border-gray-700 shadow-2xl" onClick={e=>e.stopPropagation()}>
-                                <h3 className="font-bold text-white mb-4">Rate {media.name}</h3>
-                                <form onSubmit={postReview}>
-                                    <input name="author" placeholder="Name" className="w-full bg-black border border-gray-700 rounded-lg p-3 mb-3 text-sm text-white focus:border-red-600 outline-none" required />
-                                    <select name="rating" className="w-full bg-black border border-gray-700 rounded-lg p-3 mb-3 text-sm text-white focus:border-red-600 outline-none"><option value="5">5 ★★★★★</option><option value="4">4 ★★★★</option><option value="3">3 ★★★</option><option value="2">2 ★★</option><option value="1">1 ★</option></select>
-                                    <textarea name="content" placeholder="Review..."
+                                     
