@@ -1,1 +1,630 @@
-w
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CineMax</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0a0e17">
+
+    <!-- 1. STYLES -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- 2. FIREBASE COMPAT -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { background-color: #0a0e17; color: #e2e8f0; font-family: -apple-system, sans-serif; margin: 0; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .scroll-row { display: flex; overflow-x: auto; gap: 14px; padding: 0 16px 20px 16px; scroll-behavior: smooth; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Loader */
+        #loader { position: fixed; inset: 0; background: #0a0e17; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #1e293b; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        /* Glass UI */
+        .glass-nav { background: rgba(15, 23, 42, 0.9); border-top: 1px solid rgba(148, 163, 184, 0.1); backdrop-filter: blur(12px); }
+        .glass-header { background: rgba(10, 14, 23, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(148, 163, 184, 0.1); }
+        .hero-gradient { background: linear-gradient(to top, #0a0e17 0%, transparent 100%); }
+        .card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; border-radius: 12px; }
+        
+        .view { display: none; padding-bottom: 100px; }
+        .view.active { display: block; animation: fadeIn 0.4s; }
+        
+        /* Hidden Input */
+        #file-input { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- LOADER -->
+    <div id="loader">
+        <div class="spinner"></div>
+        <div style="color:#94a3b8; font-size:12px; letter-spacing: 1px;">INITIALIZING...</div>
+    </div>
+
+    <!-- HEADER -->
+    <header id="main-header" class="fixed top-0 w-full z-40 glass-header px-4 py-3 transition-transform duration-300">
+        <div class="flex justify-between items-center mb-3">
+            <h1 class="text-2xl font-black tracking-tighter" onclick="app.router('home')">
+                <span class="text-white">CINE</span><span style="color:#3b82f6">MAX</span>
+            </h1>
+            <div id="header-avatar" onclick="app.router('profile')" class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-blue-500 overflow-hidden cursor-pointer bg-cover bg-center">
+                <i data-lucide="user" class="w-4 h-4"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main id="app-container" class="pt-20">
+        <div id="home-view" class="view active"></div>
+        
+        <div id="search-view" class="view hidden">
+             <div class="px-4 mb-4">
+                <input id="search-input" class="w-full bg-[#1e293b] border border-[#334155] rounded-xl py-3 pl-4 pr-10 text-sm focus:outline-none focus:border-blue-500 text-white placeholder-slate-400 transition-all" placeholder="Search series, movies..." oninput="app.handleSearch(this.value)">
+             </div>
+             <div id="search-results" class="p-4 grid grid-cols-3 gap-3"></div>
+        </div>
+        
+        <div id="saved-view" class="view hidden p-5 pt-10">
+            <h2 class="text-2xl font-bold mb-6">My Watchlist</h2>
+            <div id="watchlist-grid" class="grid grid-cols-3 gap-3"></div>
+            <div id="empty-watchlist" class="hidden text-center text-slate-500 mt-20">
+                <i data-lucide="bookmark" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                <p>Your list is empty.</p>
+            </div>
+        </div>
+
+        <div id="profile-view" class="view hidden p-5 pt-4"></div>
+
+        <div id="details-view" class="view fixed inset-0 bg-[#0a0e17] z-50 overflow-y-auto pb-0"></div>
+    </main>
+
+    <!-- NAVBAR -->
+    <nav id="navbar" class="glass-nav fixed bottom-0 w-full z-40 flex justify-around items-center pb-6 pt-4">
+        <button onclick="app.router('home')" id="btn-home" class="flex flex-col items-center text-blue-500 transition-colors">
+            <i data-lucide="home" class="w-6 h-6"></i><span class="text-[10px] mt-1 font-medium">Home</span>
+        </button>
+        <button onclick="app.router('search'); setTimeout(()=>document.getElementById('search-input').focus(), 100)" id="btn-search" class="flex flex-col items-center text-slate-500 transition-colors hover:text-blue-400">
+            <i data-lucide="search" class="w-6 h-6"></i><span class="text-[10px] mt-1 font-medium">Search</span>
+        </button>
+        <button onclick="app.router('saved')" id="btn-saved" class="flex flex-col items-center text-slate-500 transition-colors hover:text-blue-400">
+            <i data-lucide="bookmark" class="w-6 h-6"></i><span class="text-[10px] mt-1 font-medium">Saved</span>
+        </button>
+        <button onclick="app.router('profile')" id="btn-profile" class="flex flex-col items-center text-slate-500 transition-colors hover:text-blue-400">
+            <i data-lucide="user" class="w-6 h-6"></i><span class="text-[10px] mt-1 font-medium">Profile</span>
+        </button>
+    </nav>
+
+    <!-- REVIEW MODAL -->
+    <div id="modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-6 backdrop-blur-sm" onclick="app.closeModal()">
+        <div class="bg-[#1e293b] w-full max-w-sm p-6 rounded-2xl border border-[#334155] shadow-2xl" onclick="event.stopPropagation()">
+            <h3 class="font-bold text-white mb-4 text-lg">Rate this Title</h3>
+            <input id="r-name" placeholder="Your Name" class="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-3 mb-3 text-sm text-white focus:border-blue-500 outline-none" />
+            <select id="r-rating" class="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-3 mb-3 text-sm text-white focus:border-blue-500 outline-none">
+                <option value="5">5 ★ - Perfection</option>
+                <option value="4">4 ★ - Great</option>
+                <option value="3">3 ★ - Good</option>
+                <option value="2">2 ★ - Meh</option>
+                <option value="1">1 ★ - Skip</option>
+            </select>
+            <textarea id="r-text" placeholder="Write your review..." class="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-3 mb-4 text-sm text-white focus:border-blue-500 outline-none resize-none" rows="3"></textarea>
+            <button onclick="app.submitReview()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg shadow-blue-900/50">Post Review</button>
+        </div>
+    </div>
+
+    <!-- Hidden Input for File Upload -->
+    <input type="file" id="file-input" accept="image/*" onchange="app.handleProfileUpload(this)">
+
+    <script>
+        const App = {
+            data: { hits: [], bolly: [], holly: [], trend: [] },
+            currentMedia: null,
+            user: null,
+            db: null,
+            auth: null,
+            isSignUp: false,
+            userStats: { reviews: 0, joined: '2024' },
+
+            // --- YOUR CONFIG (Pre-filled) ---
+            firebaseConfig: {
+                apiKey: "AIzaSyBIHCzFY15p1AhD9wwPXS5ugrfVEptEImo",
+                authDomain: "cinemax-a3597.firebaseapp.com",
+                projectId: "cinemax-a3597",
+                storageBucket: "cinemax-a3597.firebasestorage.app",
+                messagingSenderId: "603071324966",
+                appId: "1:603071324966:web:4fc93ca00f3958c1bad7e7"
+            },
+
+            // --- LISTS ---
+            hitsList: ["NCIS","Pluribus","IT: Welcome to Derry","Superman","The Last of Us","Stranger Things","F1","Mickey 17","Captain America: Brave New World","Thunderbolts","Blade","Daredevil: Born Again","Ironheart","Wednesday","The White Lotus","Andor","Euphoria","Squid Game"],
+            bollyList: ["The Family Man","Panchayat","Paatal Lok","Khakee: The Bengal Chapter","Mirzapur","Rana Naidu","Delhi Crime","Mismatched","Kota Factory","Heeramandi","Citadel: Honey Bunny","The Railway Men","Farzi","Rocket Boys","Jubilee","Kaala Paani","Scoop","Trial by Fire","Dahaad","Saas, Bahu Aur Flamingo","Asur","Scam 2003","Made in Heaven","Mumbai Diaries","Aarya","Special OPS","Suzhal"],
+
+            init: async function() {
+                try {
+                    if(typeof firebase !== 'undefined') {
+                        if (!firebase.apps.length) firebase.initializeApp(this.firebaseConfig);
+                        this.db = firebase.firestore();
+                        this.auth = firebase.auth();
+                        this.auth.onAuthStateChanged(u => {
+                            this.user = u;
+                            if(u) {
+                                // Load stats mock
+                                this.userStats.joined = new Date(u.metadata.creationTime).toLocaleDateString();
+                                // Try to load local profile data (simulating persistence)
+                                const localProfile = localStorage.getItem('cinemax_profile_'+u.uid);
+                                if(localProfile) {
+                                    const parsed = JSON.parse(localProfile);
+                                    if(parsed.photoURL && !u.photoURL) u.photoURL = parsed.photoURL;
+                                    if(parsed.displayName && !u.displayName) u.displayName = parsed.displayName;
+                                }
+                            }
+                            this.updateProfileUI();
+                            if(document.getElementById('profile-view').classList.contains('active')) this.renderProfile();
+                        });
+                    }
+                } catch(e) { console.log("Offline", e); }
+
+                await this.loadData();
+                lucide.createIcons();
+                document.getElementById('loader').style.display = 'none';
+            },
+
+            loadData: async function() {
+                try {
+                    const mainRes = await fetch('https://api.tvmaze.com/shows');
+                    const mainData = await mainRes.json();
+
+                    const fetchList = async (list) => {
+                        const promises = list.map(q => fetch(`https://api.tvmaze.com/singlesearch/shows?q=${q}`).then(r=>r.json()).catch(()=>null));
+                        const results = await Promise.all(promises);
+                        return results.filter(x => x && x.id);
+                    };
+
+                    const [hits, bolly] = await Promise.all([fetchList(this.hitsList), fetchList(this.bollyList)]);
+
+                    const spotlight = [];
+                    this.hitsList.forEach(t => {
+                        const f = hits.find(h => h.name.toLowerCase().includes(t.toLowerCase()));
+                        if(f && !spotlight.some(x=>x.id===f.id)) spotlight.push(f);
+                    });
+
+                    const uniqueBolly = [...new Map(bolly.map(item => [item['id'], item])).values()].sort((a,b) => new Date(b.premiered||0) - new Date(a.premiered||0));
+                    const hollywood = mainData.filter(s => s.language === 'English').sort((a,b)=> new Date(b.premiered||0) - new Date(a.premiered||0)).slice(0,50);
+                    const trending = mainData.sort((a,b)=>(b.rating.average||0)-(a.rating.average||0)).slice(0,30);
+
+                    this.data = { spot: spotlight, bolly: uniqueBolly, holly: hollywood, trend: trending };
+                    this.renderHome();
+                } catch(e) { console.error(e); }
+            },
+
+            router: function(page) {
+                document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.view').forEach(el => el.classList.add('hidden')); 
+                
+                ['home','search','saved','profile'].forEach(k => {
+                    const btn = document.getElementById('btn-'+k);
+                    if(btn) btn.className = "flex flex-col items-center text-slate-500 transition-colors hover:text-blue-400";
+                });
+
+                if(page === 'home') {
+                    document.getElementById('home-view').classList.remove('hidden');
+                    document.getElementById('home-view').classList.add('active');
+                    document.getElementById('main-header').style.transform = 'translateY(0)';
+                    document.getElementById('navbar').style.display = 'flex';
+                    document.getElementById('btn-home').className = "flex flex-col items-center accent-text";
+                } else if (page === 'search') {
+                    document.getElementById('search-view').classList.remove('hidden');
+                    document.getElementById('search-view').classList.add('active');
+                    document.getElementById('main-header').style.transform = 'translateY(-100%)';
+                    document.getElementById('navbar').style.display = 'flex';
+                    document.getElementById('btn-search').className = "flex flex-col items-center accent-text";
+                } else if (page === 'saved') {
+                    if (!this.user || this.user.isAnonymous) {
+                         if(confirm("Please Sign In to view your Watchlist.")) this.router('profile');
+                         return;
+                    }
+                    this.renderWatchlist();
+                    document.getElementById('saved-view').classList.remove('hidden');
+                    document.getElementById('saved-view').classList.add('active');
+                    document.getElementById('main-header').style.transform = 'translateY(-100%)';
+                    document.getElementById('btn-saved').className = "flex flex-col items-center accent-text";
+                } else if (page === 'profile') {
+                    this.renderProfile();
+                    document.getElementById('profile-view').classList.remove('hidden');
+                    document.getElementById('profile-view').classList.add('active');
+                    document.getElementById('main-header').style.transform = 'translateY(-100%)';
+                    document.getElementById('btn-profile').className = "flex flex-col items-center accent-text";
+                } else if (page === 'details') {
+                    document.getElementById('details-view').classList.remove('hidden');
+                    document.getElementById('details-view').classList.add('active');
+                    document.getElementById('main-header').style.transform = 'translateY(-100%)';
+                    document.getElementById('navbar').style.display = 'none';
+                }
+                window.scrollTo(0,0);
+            },
+
+            // --- RENDERERS ---
+            renderHome: function() {
+                const container = document.getElementById('home-view');
+                container.innerHTML = '';
+                const hero = this.data.spot[0];
+                if(hero) {
+                    container.innerHTML += `
+                        <div class="px-4 mb-8 pt-4" onclick="app.openDetails(${hero.id})">
+                            <div class="relative aspect-[4/5] md:aspect-video rounded-2xl overflow-hidden border border-[#1e293b] shadow-2xl bg-[#0f172a]">
+                                <img src="${hero.image?.original}" class="w-full h-full object-cover">
+                                <div class="absolute inset-0 hero-gradient"></div>
+                                <div class="absolute bottom-5 left-5 right-5">
+                                    <span class="accent-bg text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg mb-2 inline-block tracking-wider">NEW ARRIVAL</span>
+                                    <h2 class="text-3xl font-black text-white leading-none drop-shadow-xl">${hero.name}</h2>
+                                    <div class="flex gap-2 text-xs font-medium text-slate-300 mt-2">
+                                        <span>${hero.genres?.[0]}</span> • <span>${hero.premiered?.substring(0,4)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                container.innerHTML += this.renderSection("🚀 New Arrivals", this.data.spot);
+                container.innerHTML += this.renderSection("🇮🇳 Bollywood Hits", this.data.bolly);
+                container.innerHTML += this.renderSection("🔥 Global Trending", this.data.trend);
+                container.innerHTML += this.renderSection("🎬 Latest Hollywood", this.data.holly);
+            },
+
+            renderSection: function(title, items) {
+                if(!items.length) return '';
+                const cards = items.slice(0,30).map(item => `
+                    <div class="min-w-[120px] w-[120px] cursor-pointer group" onclick="app.openDetails(${item.id})">
+                        <div class="aspect-[2/3] rounded-xl overflow-hidden bg-[#1e293b] border border-[#334155] relative mb-2 shadow-lg">
+                            ${item.image?.medium ? `<img src="${item.image.medium}" class="card-img" loading="lazy">` : `<div class="w-full h-full flex items-center justify-center text-xs text-slate-500 font-bold p-2 text-center">${item.name}</div>`}
+                            <div class="absolute top-2 right-2 bg-black/70 backdrop-blur text-white text-[10px] font-bold px-1.5 py-0.5 rounded border border-white/10">★ ${item.rating?.average||'-'}</div>
+                        </div>
+                        <h4 class="text-slate-300 text-xs font-bold truncate pl-1 group-hover:text-blue-400 transition-colors">${item.name}</h4>
+                        <p class="text-slate-500 text-[10px] px-1">${item.premiered?.substring(0,4)||''}</p>
+                    </div>
+                `).join('');
+                return `
+                    <div class="mb-8">
+                        <div class="flex justify-between items-end px-4 mb-4">
+                            <h3 class="text-lg font-bold text-white border-l-4 border-blue-500 pl-3">${title}</h3>
+                        </div>
+                        <div class="scroll-row">${cards}</div>
+                    </div>
+                `;
+            },
+
+            renderWatchlist: function() {
+                const list = JSON.parse(localStorage.getItem('cinemax_watchlist') || '[]');
+                const container = document.getElementById('watchlist-grid');
+                const empty = document.getElementById('empty-watchlist');
+                
+                if(list.length === 0) {
+                    container.innerHTML = '';
+                    empty.classList.remove('hidden');
+                } else {
+                    empty.classList.add('hidden');
+                    container.innerHTML = list.map(item => `
+                        <div onclick="app.openDetails(${item.id})" class="cursor-pointer rounded-xl overflow-hidden relative aspect-[2/3] bg-[#1e293b] border border-[#334155]">
+                            ${item.image?.medium ? `<img src="${item.image.medium}" class="w-full h-full object-cover">` : ''}
+                            <button onclick="event.stopPropagation(); app.toggleWatchlist(${item.id}, true)" class="absolute top-1 right-1 bg-red-600/80 p-1 rounded-full text-white"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                        </div>
+                    `).join('');
+                    lucide.createIcons();
+                }
+            },
+
+            renderProfile: function() {
+                const container = document.getElementById('profile-view');
+                
+                if(!this.user || this.user.isAnonymous) {
+                    // Login Form
+                    const title = this.isSignUp ? "Create Account" : "Welcome Back";
+                    const btnText = this.isSignUp ? "Sign Up" : "Sign In";
+                    const toggleText = this.isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up";
+                    
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-[70vh] text-center">
+                            <div class="w-20 h-20 rounded-full bg-blue-600/20 flex items-center justify-center mb-6">
+                                <i data-lucide="user" class="w-10 h-10 text-blue-500"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold mb-2 text-white">${title}</h2>
+                            <p class="text-slate-400 mb-8 text-sm">Sign in to manage your profile.</p>
+                            
+                            <div class="w-full max-w-xs space-y-4">
+                                <input id="login-email" type="email" placeholder="Email" class="w-full bg-[#1e293b] border border-[#334155] rounded-xl p-4 text-white outline-none focus:border-blue-500">
+                                <input id="login-pass" type="password" placeholder="Password" class="w-full bg-[#1e293b] border border-[#334155] rounded-xl p-4 text-white outline-none focus:border-blue-500">
+                                <button onclick="app.handleAuth()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition">${btnText}</button>
+                                <p class="text-xs text-slate-500 cursor-pointer hover:text-white mt-4" onclick="app.toggleAuthMode()">${toggleText}</p>
+                                <p id="auth-msg" class="text-xs text-red-500 mt-2"></p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Profile Dashboard
+                    const savedCount = JSON.parse(localStorage.getItem('cinemax_watchlist') || '[]').length;
+                    const name = this.user.displayName || "User";
+                    const photo = this.user.photoURL; 
+                    
+                    container.innerHTML = `
+                        <div class="p-4">
+                            <div class="flex items-center gap-4 mb-8">
+                                <div class="relative w-24 h-24">
+                                    <div class="w-full h-full rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-3xl font-bold text-white border-4 border-[#1e293b] overflow-hidden"
+                                         style="${photo ? `background-image:url(${photo}); background-size:cover; background-position:center;` : ''}">
+                                        ${!photo ? name[0].toUpperCase() : ''}
+                                    </div>
+                                    <button onclick="document.getElementById('file-input').click()" class="absolute bottom-0 right-0 bg-blue-600 p-2 rounded-full border-4 border-[#0a0e17] text-white">
+                                        <i data-lucide="camera" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-white">${name}</h2>
+                                    <p class="text-sm text-slate-400 mb-2">${this.user.email}</p>
+                                    <div class="flex gap-2">
+                                        <span class="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded border border-blue-900/50">Member</span>
+                                        <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">Joined ${this.userStats.joined}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 mb-8">
+                                <div class="bg-[#1e293b] p-5 rounded-2xl border border-[#334155] text-center" onclick="app.router('saved')">
+                                    <div class="text-3xl font-black text-blue-500 mb-1">${savedCount}</div>
+                                    <div class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Watchlist</div>
+                                </div>
+                                <div class="bg-[#1e293b] p-5 rounded-2xl border border-[#334155] text-center">
+                                    <div class="text-3xl font-black text-pink-500 mb-1">${this.userStats.reviews}</div>
+                                    <div class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Reviews</div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div class="bg-[#1e293b] p-4 rounded-xl flex justify-between items-center cursor-pointer border border-[#334155]" onclick="app.updateName()">
+                                    <div class="flex items-center gap-3">
+                                        <div class="p-2 bg-blue-500/10 rounded-lg text-blue-500"><i data-lucide="edit-3" class="w-5 h-5"></i></div>
+                                        <span class="text-sm font-medium text-slate-200">Edit Name</span>
+                                    </div>
+                                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+                                </div>
+                                <div class="bg-[#1e293b] p-4 rounded-xl flex justify-between items-center cursor-pointer border border-[#334155] text-red-400 hover:bg-red-900/10" onclick="app.handleLogout()">
+                                    <div class="flex items-center gap-3">
+                                        <div class="p-2 bg-red-500/10 rounded-lg"><i data-lucide="log-out" class="w-5 h-5"></i></div>
+                                        <span class="text-sm font-bold">Sign Out</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-8">
+                                <h3 class="font-bold text-white text-sm mb-4 border-l-4 border-blue-500 pl-3">Recent Activity</h3>
+                                <div id="activity-feed" class="space-y-3 text-sm text-slate-500 italic">No recent activity</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Load user reviews for stats
+                    if(this.db) {
+                        this.db.collection('reviews').where('userId', '==', this.user.uid).get().then(snap => {
+                            this.userStats.reviews = snap.size;
+                            document.querySelector('.text-pink-500').innerText = snap.size;
+                            if(!snap.empty) {
+                                document.getElementById('activity-feed').innerHTML = snap.docs.slice(0,3).map(d => {
+                                    const r = d.data();
+                                    return `<div class="bg-[#151b26] p-3 rounded-lg border border-[#1e293b] text-slate-300 text-xs">Reviewed a title with ${r.rating}★</div>`;
+                                }).join('');
+                            }
+                        });
+                    }
+                }
+                lucide.createIcons();
+            },
+
+            // --- AUTH ACTIONS ---
+            toggleAuthMode: function() { this.isSignUp = !this.isSignUp; this.renderProfile(); },
+
+            handleAuth: async function() {
+                const email = document.getElementById('login-email').value;
+                const pass = document.getElementById('login-pass').value;
+                const msg = document.getElementById('auth-msg');
+                if(!email || !pass) { msg.innerText = "Please enter email and password"; return; }
+                try {
+                    if (this.isSignUp) await this.auth.createUserWithEmailAndPassword(email, pass);
+                    else await this.auth.signInWithEmailAndPassword(email, pass);
+                    this.isSignUp = false;
+                } catch(e) { msg.innerText = e.message.replace('Firebase:', '').trim(); }
+            },
+
+            handleLogout: function() {
+                this.auth.signOut().then(() => { this.user = null; this.auth.signInAnonymously(); this.renderProfile(); });
+            },
+            
+            updateName: async function() {
+                const newName = prompt("Enter new display name:");
+                if(newName) { await this.user.updateProfile({ displayName: newName }); this.renderProfile(); }
+            },
+
+            handleProfileUpload: function(input) {
+                if (input.files && input.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        const dataUrl = e.target.result;
+                        await this.user.updateProfile({ photoURL: dataUrl });
+                        // Save to local storage to persist across refresh for this user
+                        localStorage.setItem('cinemax_profile_'+this.user.uid, JSON.stringify({ photoURL: dataUrl, displayName: this.user.displayName }));
+                        this.renderProfile(); this.updateProfileUI();
+                    };
+                    reader.readAsDataURL(input.files[0]);
+                }
+            },
+            
+            updateProfileUI: function() {
+                const avatar = document.getElementById('header-avatar');
+                if(!avatar) return;
+                if(this.user && !this.user.isAnonymous) {
+                    if(this.user.photoURL) {
+                        avatar.innerHTML = ''; avatar.style.backgroundImage = `url(${this.user.photoURL})`;
+                    } else {
+                        avatar.innerHTML = (this.user.displayName||'U')[0].toUpperCase();
+                        avatar.style.background = '#3b82f6'; avatar.style.color = 'white'; avatar.style.backgroundImage = 'none';
+                    }
+                } else {
+                    avatar.innerHTML = '<i data-lucide="user" class="w-4 h-4"></i>';
+                    avatar.style.background = '#1e293b'; avatar.style.color = '#3b82f6'; avatar.style.backgroundImage = 'none';
+                }
+                lucide.createIcons();
+            },
+
+            // --- SEARCH ---
+            handleSearch: async function(term) {
+                const resultsDiv = document.getElementById('search-results');
+                const searchView = document.getElementById('search-view');
+                const homeView = document.getElementById('home-view');
+                
+                if(term.length > 0) {
+                     homeView.classList.remove('active'); searchView.classList.remove('hidden'); searchView.classList.add('active');
+                } else {
+                     homeView.classList.add('active'); searchView.classList.remove('active'); searchView.classList.add('hidden'); return;
+                }
+                if(term.length < 3) return;
+
+                const res = await fetch(`https://api.tvmaze.com/search/shows?q=${term}`);
+                const data = await res.json();
+                resultsDiv.innerHTML = data.map(d => `
+                    <div onclick="app.openDetails(${d.show.id})" class="cursor-pointer">
+                        <div class="aspect-[2/3] rounded-xl overflow-hidden bg-[#1e293b] border border-[#334155] mb-2">
+                            ${d.show.image ? `<img src="${d.show.image.medium}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-xs text-slate-500 p-2 text-center">${d.show.name}</div>`}
+                        </div>
+                        <div class="text-xs font-bold text-slate-300 truncate">${d.show.name}</div>
+                    </div>
+                `).join('');
+            },
+
+            clearSearch: function() { document.getElementById('search-input').value = ''; this.handleSearch(''); },
+            
+            toggleWatchlist: function(id, refresh = false) {
+                if (!this.user || this.user.isAnonymous) {
+                     if(confirm("Please Sign In to add to Watchlist.")) this.router('profile'); return;
+                }
+                let list = JSON.parse(localStorage.getItem('cinemax_watchlist') || '[]');
+                if(list.find(i => i.id === id)) list = list.filter(i => i.id !== id);
+                else if (this.currentMedia && this.currentMedia.id === id) list.unshift(this.currentMedia);
+                
+                localStorage.setItem('cinemax_watchlist', JSON.stringify(list));
+                if(refresh) this.renderWatchlist(); else this.renderDetailsButtons(id); 
+            },
+
+            openDetails: async function(id) {
+                const view = document.getElementById('details-view');
+                this.currentMedia = { id };
+                view.innerHTML = '<div class="h-screen flex items-center justify-center text-slate-500">Loading...</div>';
+                this.router('details');
+
+                const res = await fetch(`https://api.tvmaze.com/shows/${id}?embed=cast`);
+                const data = await res.json();
+                this.currentMedia = data;
+
+                const castHTML = data._embedded?.cast.slice(0,10).map(c => `
+                    <div class="min-w-[70px] text-center">
+                        <img src="${c.person.image?.medium}" class="w-16 h-16 rounded-full object-cover mx-auto mb-2 border-2 border-[#1e293b]" onerror="this.style.display='none'">
+                        <div class="text-[10px] text-slate-400 truncate">${c.person.name}</div>
+                    </div>
+                `).join('') || '<div class="text-xs text-slate-600">No cast info</div>';
+
+                view.innerHTML = `
+                    <div class="relative w-full aspect-[4/3] md:aspect-video">
+                        <img src="${data.image?.original || data.image?.medium}" class="w-full h-full object-cover opacity-60" style="object-position:top">
+                        <div class="absolute inset-0 bg-gradient-to-t from-[#0a0e17] via-transparent to-transparent"></div>
+                        <button onclick="app.router('home')" class="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur flex items-center justify-center border border-white/10 text-white"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+                        <div id="action-buttons" class="absolute top-4 right-4 flex gap-3 z-20"></div>
+                    </div>
+                    <div class="px-5 -mt-20 relative z-10">
+                        <h1 class="text-3xl font-black leading-tight mb-3 drop-shadow-2xl text-white">${data.name}</h1>
+                        <div class="flex gap-3 text-xs font-bold text-slate-300 mb-6 items-center">
+                            <span class="bg-blue-600 text-white px-2 py-0.5 rounded">${data.premiered?.substring(0,4)}</span>
+                            <span class="secondary-accent flex items-center gap-1"><i data-lucide="star" class="w-3 h-3 fill-current"></i> ${data.rating?.average}</span>
+                            <span>${data.genres?.[0]}</span>
+                        </div>
+                        <p class="text-sm text-slate-300 leading-relaxed mb-8 border-l-2 border-blue-600 pl-4">${data.summary?.replace(/<[^>]*>/g, '')}</p>
+                        <h3 class="font-bold text-white text-xs mb-4 uppercase tracking-wider text-slate-400">Cast</h3>
+                        <div class="flex gap-4 overflow-x-auto pb-6 no-scrollbar mb-6">${castHTML}</div>
+                        
+                        <div class="bg-[#111827] rounded-2xl p-5 border border-[#1e293b] mb-6">
+                            <h3 class="font-bold text-white text-sm mb-4">Verdict Meter</h3>
+                            <div class="flex items-center gap-6">
+                                <div id="pie-chart" class="pie-circle" style="background: #333"><div class="pie-inner"><span id="verdict-score" class="text-xl font-black text-white">0%</span></div></div>
+                                <div class="flex-1 text-xs space-y-2"><div class="flex justify-between text-gray-400"><span>Perfection (5★)</span><span id="c-5" class="text-white font-bold">0</span></div><div class="flex justify-between text-gray-400"><span>Great (4★)</span><span id="c-4" class="text-white font-bold">0</span></div><div class="flex justify-between text-gray-400"><span>Good (3★)</span><span id="c-3" class="text-white font-bold">0</span></div><div class="flex justify-between text-gray-400"><span>Skip (1-2★)</span><span id="c-1" class="text-white font-bold">0</span></div></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#111827] rounded-2xl p-5 border border-[#1e293b] mb-20">
+                            <div class="flex justify-between items-center mb-5"><h3 class="font-bold text-white text-lg">Reviews</h3><button onclick="app.openModal()" class="text-blue-400 text-xs font-bold bg-blue-900/20 px-4 py-2 rounded-lg hover:bg-blue-900/40 transition">Write Review</button></div>
+                            <div id="reviews-list" class="space-y-4 text-sm text-slate-400">Loading reviews...</div>
+                        </div>
+                    </div>
+                `;
+                this.renderDetailsButtons(id); this.loadReviews(id);
+            },
+            
+            renderDetailsButtons: function(id) {
+                const list = JSON.parse(localStorage.getItem('cinemax_watchlist') || '[]');
+                const isFav = list.find(i => i.id === id);
+                const container = document.getElementById('action-buttons');
+                if(!container) return;
+                container.innerHTML = `
+                    <button onclick="app.toggleWatchlist(${id})" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur flex items-center justify-center border border-white/10"><i data-lucide="heart" class="w-5 h-5 ${isFav ? 'text-red-500 fill-current' : 'text-white'}"></i></button>
+                    <button onclick="navigator.share({title:'CineMax', url:window.location.href})" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur flex items-center justify-center border border-white/10"><i data-lucide="share-2" class="w-5 h-5 text-white"></i></button>
+                `;
+                lucide.createIcons();
+            },
+
+            loadReviews: function(id) {
+                const list = document.getElementById('reviews-list');
+                if(!this.db) { list.innerHTML = "Offline Mode"; return; }
+                this.db.collection('reviews').where('mediaId', '==', String(id)).onSnapshot(snap => {
+                    if(snap.empty) { list.innerHTML = '<div class="text-center py-4 text-slate-600">No reviews yet</div>'; this.updateMeter([]); return; }
+                    const reviews = snap.docs.map(d=>d.data()).sort((a,b) => (b.timestamp?.seconds||0) - (a.timestamp?.seconds||0));
+                    list.innerHTML = reviews.map(r => `<div class="border-b border-[#1e293b] pb-3 last:border-0"><div class="flex justify-between text-xs mb-1.5"><span class="font-bold text-white">${r.author}</span><span class="text-blue-400 font-bold">★ ${r.rating}</span></div><p class="text-xs text-slate-300 leading-relaxed">${r.content}</p></div>`).join('');
+                    this.updateMeter(reviews);
+                });
+            },
+
+            updateMeter: function(reviews) {
+                let p=0, go=0, gd=0, tp=0, total=reviews.length;
+                reviews.forEach(r => { if(r.rating==5) p++; else if(r.rating==4) go++; else if(r.rating==3) gd++; else tp++; });
+                if(total === 0) return;
+                const pDeg = (p/total)*360; const goDeg = (go/total)*360; const gdDeg = (gd/total)*360;
+                document.getElementById('pie-chart').style.background = `conic-gradient(#22c55e 0deg ${pDeg}deg, #3b82f6 ${pDeg}deg ${pDeg+goDeg}deg, #eab308 ${pDeg+goDeg}deg ${pDeg+goDeg+gdDeg}deg, #ef4444 ${pDeg+goDeg+gdDeg}deg 360deg)`;
+                document.getElementById('verdict-score').innerText = Math.round((p/total)*100) + '%';
+                document.getElementById('c-5').innerText = p; document.getElementById('c-4').innerText = go; document.getElementById('c-3').innerText = gd; document.getElementById('c-1').innerText = tp;
+            },
+
+            openModal: function() { 
+                if(!this.user || this.user.isAnonymous) { if(confirm("Please Sign In to Write a Review.")) this.router('profile'); return; }
+                document.getElementById('modal').classList.remove('hidden'); document.getElementById('modal').classList.add('flex'); 
+            },
+            closeModal: function() { document.getElementById('modal').classList.add('hidden'); document.getElementById('modal').classList.remove('flex'); },
+
+            submitReview: function() {
+                const name = document.getElementById('r-name').value;
+                const text = document.getElementById('r-text').value;
+                const rate = document.getElementById('r-rating').value;
+                if(!name || !text) return alert("Fill all fields");
+                this.db.collection('reviews').add({ mediaId: String(this.currentMedia.id), userId: this.user.uid, author: name, content: text, rating: parseInt(rate), timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                this.closeModal();
+            }
+        };
+
+        window.app = App;
+        window.onload = () => App.init();
+    </script>
+</body>
+</html>
+
+
+
