@@ -1,87 +1,205 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>AI Vision Preview</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern AI Vision</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
-        h1 { margin-top: 20px; }
-        #canvas-container { position: relative; margin: 20px auto; width: 640px; height: 480px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); background: black; }
-        video { display: none; } /* Hide the raw video, we will draw on canvas */
-        canvas { width: 100%; height: 100%; }
-        #status { font-weight: bold; color: #333; margin-bottom: 10px; }
+        /* Modern Dark Theme */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        h1 { margin-bottom: 10px; font-weight: 600; letter-spacing: -0.5px; }
+        
+        /* The Camera/Canvas Container */
+        #container {
+            position: relative;
+            width: 90%;
+            max-width: 640px;
+            aspect-ratio: 4/3;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: #2a2a2a;
+        }
+
+        /* Overlapping video and canvas */
+        video, canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Status Badge */
+        #status-pill {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px); /* Modern Glass Effect */
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Loading Spinner Animation */
+        .spinner {
+            width: 12px;
+            height: 12px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Hide elements initially */
+        .hidden { display: none !important; }
     </style>
+
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 </head>
 <body>
 
-    <h1>🤖 Object Detector Prototype</h1>
-    <p id="status">Loading AI Model... (this may take a moment)</p>
-    
-    <div id="canvas-container">
-        <video id="video" width="640" height="480" autoplay muted></video>
-        <canvas id="canvas" width="640" height="480"></canvas>
+    <h1>👁️ Vision AI</h1>
+
+    <div id="container">
+        <div id="status-pill">
+            <div class="spinner" id="loader"></div>
+            <span id="status-text">Initializing Neural Network...</span>
+        </div>
+
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
     </div>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const status = document.getElementById('status');
+        const statusText = document.getElementById('status-text');
+        const loader = document.getElementById('loader');
+
         let model;
 
-        // 1. Load the AI Model
-        cocoSsd.load().then(loadedModel => {
-            model = loadedModel;
-            status.innerText = "Model Loaded! Starting Camera...";
-            startCamera();
-        });
-
-        // 2. Start the Camera
-        function startCamera() {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    video.srcObject = stream;
-                    video.onloadeddata = () => {
-                        status.innerText = "Detecting Objects...";
-                        predictWebcam(); // Start detection loop
+        // 1. Setup Camera (Fixed for Mobile & Performance)
+        async function setupCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment', // Prefer rear camera on phones
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                });
+                video.srcObject = stream;
+                
+                return new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        // Match canvas size to video size
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        resolve(video);
                     };
-                })
-                .catch(err => {
-                    status.innerText = "Error accessing camera: " + err;
                 });
+            } catch (err) {
+                statusText.innerText = "Camera Error: " + err.message;
+                loader.classList.add('hidden');
+                throw err;
+            }
         }
 
-        // 3. Detect Objects in Real-Time
-        function predictWebcam() {
-            model.detect(video).then(predictions => {
-                // Clear the canvas and draw the video frame
-                ctx.drawImage(video, 0, 0, 640, 480);
-
-                // Loop through predictions and draw boxes
-                predictions.forEach(prediction => {
-                    // Draw Box
-                    ctx.beginPath();
-                    ctx.rect(...prediction.bbox);
-                    ctx.lineWidth = 2;
-                    ctx.strokeStyle = '#00FF00';
-                    ctx.fillStyle = '#00FF00';
-                    ctx.stroke();
-
-                    // Draw Label
-                    ctx.font = '18px Arial';
-                    ctx.fillText(
-                        prediction.class + ' (' + Math.round(prediction.score * 100) + '%)',
-                        prediction.bbox[0], 
-                        prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10
-                    );
-                });
-
-                // Call this function again for the next frame
-                requestAnimationFrame(predictWebcam);
-            });
+        // 2. Load Model & Start
+        async function init() {
+            try {
+                // Wait for camera first
+                await setupCamera();
+                statusText.innerText = "Loading AI Model...";
+                
+                // Load COCO-SSD
+                model = await cocoSsd.load();
+                
+                // Ready!
+                statusText.innerText = "Active";
+                loader.classList.add('hidden'); // Hide spinner
+                
+                // Start Loop
+                predict();
+            } catch (err) {
+                console.error(err);
+            }
         }
+
+        // 3. Detection Loop
+        function predict() {
+            // Check if video is ready
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                
+                // Detect objects
+                model.detect(video).then(predictions => {
+                    // Clear canvas
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw Styling
+                    ctx.font = '16px Inter';
+                    ctx.lineWidth = 4;
+
+                    predictions.forEach(prediction => {
+                        const [x, y, width, height] = prediction.bbox;
+                        
+                        // Draw Box
+                        ctx.strokeStyle = '#00FFFF'; // Cyan Neon
+                        ctx.fillStyle = 'rgba(0, 255, 255, 0.1)'; // Slight fill
+                        
+                        ctx.beginPath();
+                        ctx.rect(x, y, width, height);
+                        ctx.stroke();
+                        ctx.fill();
+
+                        // Draw Text Background
+                        const textWidth = ctx.measureText(prediction.class).width;
+                        ctx.fillStyle = '#00FFFF';
+                        ctx.fillRect(x, y > 20 ? y - 25 : 0, textWidth + 10, 25);
+
+                        // Draw Text Label
+                        ctx.fillStyle = '#000000';
+                        ctx.fillText(prediction.class, x + 5, y > 20 ? y - 7 : 18);
+                    });
+
+                    // Loop again
+                    requestAnimationFrame(predict);
+                });
+            } else {
+                requestAnimationFrame(predict);
+            }
+        }
+
+        // Start the app
+        init();
     </script>
 </body>
 </html>
-
