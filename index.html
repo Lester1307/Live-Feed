@@ -1,43 +1,48 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern AI Vision</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultra Vision AI</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
     
     <style>
-        /* Modern Dark Theme */
+        :root {
+            --primary: #00f2ea;
+            --bg: #0f172a;
+            --glass: rgba(255, 255, 255, 0.1);
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #121212;
-            color: white;
             margin: 0;
+            background: var(--bg);
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden; /* Prevent scrolling */
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            height: 100vh;
         }
 
-        h1 { margin-bottom: 10px; font-weight: 600; letter-spacing: -0.5px; }
-        
-        /* The Camera/Canvas Container */
-        #container {
-            position: relative;
-            width: 90%;
-            max-width: 640px;
-            aspect-ratio: 4/3;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            background: #2a2a2a;
+        /* Camera Feed Layer */
+        #camera-view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
         }
 
-        /* Overlapping video and canvas */
-        video, canvas {
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        canvas {
             position: absolute;
             top: 0;
             left: 0;
@@ -46,160 +51,232 @@
             object-fit: cover;
         }
 
-        /* Status Badge */
-        #status-pill {
+        /* UI Layer */
+        #ui-layer {
             position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(10px); /* Modern Glass Effect */
-            padding: 8px 16px;
-            border-radius: 30px;
-            font-size: 0.9rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 10;
+            pointer-events: none; /* Let touches pass through to video */
             display: flex;
-            align-items: center;
-            gap: 8px;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
-        /* Loading Spinner Animation */
-        .spinner {
-            width: 12px;
-            height: 12px;
-            border: 2px solid #fff;
-            border-top-color: transparent;
+        /* Header */
+        header {
+            padding: 20px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary);
+        }
+
+        /* Info Card at Bottom */
+        #info-card {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: 24px;
+            border-radius: 24px 24px 0 0;
+            transform: translateY(110%); /* Hidden by default */
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto;
+            max-height: 30vh;
+            overflow-y: auto;
+        }
+
+        #info-card.active {
+            transform: translateY(0);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        #object-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-transform: capitalize;
+            color: #fff;
+        }
+
+        #confidence-badge {
+            background: var(--primary);
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        #object-desc {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #ccc;
+        }
+
+        /* Loading Spinner */
+        #loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            z-index: 20;
+        }
+
+        .spinner-ring {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-left-color: var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Hide elements initially */
-        .hidden { display: none !important; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .hidden { opacity: 0; pointer-events: none; transition: opacity 0.5s; }
+
     </style>
-
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 </head>
 <body>
 
-    <h1>👁️ Vision AI</h1>
+    <div id="loader">
+        <div class="spinner-ring"></div>
+        <div style="font-weight: 500; letter-spacing: 1px;">Starting Neural Engine...</div>
+    </div>
 
-    <div id="container">
-        <div id="status-pill">
-            <div class="spinner" id="loader"></div>
-            <span id="status-text">Initializing Neural Network...</span>
-        </div>
-
+    <div id="camera-view">
         <video id="video" autoplay muted playsinline></video>
         <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="ui-layer">
+        <header>
+            <h1>Vision OS</h1>
+        </header>
+
+        <div id="info-card">
+            <div class="card-header">
+                <span id="object-name">Detecting...</span>
+                <span id="confidence-badge">0%</span>
+            </div>
+            <div id="object-desc">Point your camera at an object (Laptop, Cup, Person, etc.) to learn more.</div>
+        </div>
     </div>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const statusText = document.getElementById('status-text');
+        const infoCard = document.getElementById('info-card');
+        const objectName = document.getElementById('object-name');
+        const objectDesc = document.getElementById('object-desc');
+        const confBadge = document.getElementById('confidence-badge');
         const loader = document.getElementById('loader');
 
         let model;
+        let lastSpeakTime = 0;
+        let currentObject = "";
 
-        // 1. Setup Camera (Fixed for Mobile & Performance)
+        // 1. Setup Camera (Environment/Rear Mode)
         async function setupCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' },
+                audio: false
+            });
+            video.srcObject = stream;
+            return new Promise(resolve => {
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    resolve();
+                };
+            });
+        }
+
+        // 2. Fetch Wikipedia Data
+        async function getWikiInfo(query) {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: 'environment', // Prefer rear camera on phones
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    },
-                    audio: false
-                });
-                video.srcObject = stream;
-                
-                return new Promise((resolve) => {
-                    video.onloadedmetadata = () => {
-                        // Match canvas size to video size
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        resolve(video);
-                    };
-                });
-            } catch (err) {
-                statusText.innerText = "Camera Error: " + err.message;
-                loader.classList.add('hidden');
-                throw err;
+                const url = `https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro&explaintext&redirects=1&origin=*&titles=${query}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                const pages = data.query.pages;
+                const pageId = Object.keys(pages)[0];
+                return pages[pageId].extract || "No details available.";
+            } catch (e) {
+                return "Could not connect to knowledge base.";
             }
         }
 
-        // 2. Load Model & Start
-        async function init() {
-            try {
-                // Wait for camera first
-                await setupCamera();
-                statusText.innerText = "Loading AI Model...";
-                
-                // Load COCO-SSD
-                model = await cocoSsd.load();
-                
-                // Ready!
-                statusText.innerText = "Active";
-                loader.classList.add('hidden'); // Hide spinner
-                
-                // Start Loop
-                predict();
-            } catch (err) {
-                console.error(err);
-            }
+        // 3. Main AI Loop
+        async function runAI() {
+            await setupCamera();
+            model = await cocoSsd.load();
+            loader.classList.add('hidden'); // Hide loader
+            
+            setInterval(detectFrame, 100); // Run detection every 100ms
         }
 
-        // 3. Detection Loop
-        function predict() {
-            // Check if video is ready
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        async function detectFrame() {
+            const predictions = await model.detect(video);
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = '16px sans-serif';
+            ctx.lineWidth = 4;
+
+            // Filter for high confidence (> 66%)
+            const strongPredictions = predictions.filter(p => p.score > 0.66);
+
+            if (strongPredictions.length > 0) {
+                // Pick the most confident object
+                const best = strongPredictions[0];
                 
-                // Detect objects
-                model.detect(video).then(predictions => {
-                    // Clear canvas
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // Draw Box
+                ctx.strokeStyle = '#00f2ea';
+                ctx.strokeRect(...best.bbox);
+                
+                // Update UI only if it's a new object
+                if (best.class !== currentObject) {
+                    currentObject = best.class;
+                    objectName.innerText = best.class;
+                    confBadge.innerText = Math.round(best.score * 100) + "%";
                     
-                    // Draw Styling
-                    ctx.font = '16px Inter';
-                    ctx.lineWidth = 4;
-
-                    predictions.forEach(prediction => {
-                        const [x, y, width, height] = prediction.bbox;
-                        
-                        // Draw Box
-                        ctx.strokeStyle = '#00FFFF'; // Cyan Neon
-                        ctx.fillStyle = 'rgba(0, 255, 255, 0.1)'; // Slight fill
-                        
-                        ctx.beginPath();
-                        ctx.rect(x, y, width, height);
-                        ctx.stroke();
-                        ctx.fill();
-
-                        // Draw Text Background
-                        const textWidth = ctx.measureText(prediction.class).width;
-                        ctx.fillStyle = '#00FFFF';
-                        ctx.fillRect(x, y > 20 ? y - 25 : 0, textWidth + 10, 25);
-
-                        // Draw Text Label
-                        ctx.fillStyle = '#000000';
-                        ctx.fillText(prediction.class, x + 5, y > 20 ? y - 7 : 18);
-                    });
-
-                    // Loop again
-                    requestAnimationFrame(predict);
-                });
+                    // Show "Thinking..." then fetch Wiki
+                    objectDesc.innerText = "Accessing Neural Database...";
+                    infoCard.classList.add('active');
+                    
+                    const info = await getWikiInfo(best.class);
+                    // Cut text to 150 chars
+                    objectDesc.innerText = info.substring(0, 150) + "...";
+                }
             } else {
-                requestAnimationFrame(predict);
+                // If nothing found for a while, hide card (optional logic)
+                // infoCard.classList.remove('active'); 
             }
         }
 
-        // Start the app
-        init();
+        runAI();
     </script>
 </body>
 </html>
+
