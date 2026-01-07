@@ -2,281 +2,416 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ultra Vision AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NovaNews Stable</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+
     <style>
-        :root {
-            --primary: #00f2ea;
-            --bg: #0f172a;
-            --glass: rgba(255, 255, 255, 0.1);
-        }
+        body { background-color: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Glass Header */
+        .glass { background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.08); }
+        
+        /* Typography */
+        .font-serif { font-family: 'Georgia', serif; }
+        
+        /* Article Styling */
+        .article-body { font-size: 1.15rem; line-height: 1.8; color: #e2e8f0; }
+        .article-body p { margin-bottom: 1.5rem; }
+        .article-body img { width: 100%; border-radius: 0.75rem; margin: 1.5rem 0; }
+        .article-body a { pointer-events: none; text-decoration: none; color: inherit; }
 
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: white;
-            font-family: 'Outfit', sans-serif;
-            overflow: hidden; /* Prevent scrolling */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-        }
-
-        /* Camera Feed Layer */
-        #camera-view {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        /* UI Layer */
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            pointer-events: none; /* Let touches pass through to video */
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        /* Header */
-        header {
-            padding: 20px;
-            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
-            text-align: center;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 1.2rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--primary);
-            text-shadow: 0 0 10px var(--primary);
-        }
-
-        /* Info Card at Bottom */
-        #info-card {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(12px);
-            border-top: 1px solid rgba(255,255,255,0.1);
-            padding: 24px;
-            border-radius: 24px 24px 0 0;
-            transform: translateY(110%); /* Hidden by default */
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            pointer-events: auto;
-            max-height: 30vh;
-            overflow-y: auto;
-        }
-
-        #info-card.active {
-            transform: translateY(0);
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        #object-name {
-            font-size: 1.5rem;
-            font-weight: 700;
-            text-transform: capitalize;
-            color: #fff;
-        }
-
-        #confidence-badge {
-            background: var(--primary);
-            color: #000;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 0.8rem;
-        }
-
-        #object-desc {
-            font-size: 0.95rem;
-            line-height: 1.5;
-            color: #ccc;
-        }
-
-        /* Loading Spinner */
-        #loader {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-            z-index: 20;
-        }
-
-        .spinner-ring {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255,255,255,0.1);
-            border-left-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-
-        .hidden { opacity: 0; pointer-events: none; transition: opacity 0.5s; }
-
+        /* Animations */
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        
+        .modal-enter { transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 </head>
-<body>
+<body class="h-screen flex flex-col overflow-hidden">
 
-    <div id="loader">
-        <div class="spinner-ring"></div>
-        <div style="font-weight: 500; letter-spacing: 1px;">Starting Neural Engine...</div>
-    </div>
-
-    <div id="camera-view">
-        <video id="video" autoplay muted playsinline></video>
-        <canvas id="canvas"></canvas>
-    </div>
-
-    <div id="ui-layer">
-        <header>
-            <h1>Vision OS</h1>
-        </header>
-
-        <div id="info-card">
-            <div class="card-header">
-                <span id="object-name">Detecting...</span>
-                <span id="confidence-badge">0%</span>
+    <!-- HEADER -->
+    <header class="glass fixed top-0 w-full z-40 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 flex justify-between items-center h-16 mt-[env(safe-area-inset-top)]">
+        <div>
+            <h1 class="text-xl font-black tracking-tight text-white">Nova<span class="text-blue-500">News</span></h1>
+            <div class="flex items-center gap-1.5">
+                <span id="statusDot" class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
+                <span id="statusText" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Connecting...</span>
             </div>
-            <div id="object-desc">Point your camera at an object (Laptop, Cup, Person, etc.) to learn more.</div>
+        </div>
+        
+        <div class="flex bg-slate-800 rounded-lg p-0.5 border border-white/10">
+            <button onclick="changeSource('india')" id="tabInd" class="px-4 py-1.5 rounded-md text-xs font-bold bg-blue-600 text-white transition-all shadow-lg">India</button>
+            <button onclick="changeSource('world')" id="tabWor" class="px-4 py-1.5 rounded-md text-xs font-bold text-gray-400 hover:text-white transition-all">World</button>
+        </div>
+    </header>
+
+    <!-- MAIN FEED -->
+    <main id="mainContainer" class="flex-1 overflow-y-auto hide-scrollbar pt-24 pb-20 px-0 bg-[#0f172a]">
+        
+        <div class="flex justify-center mb-6">
+             <button onclick="initApp(true)" class="bg-slate-800/80 text-blue-400 px-5 py-2 rounded-full text-[10px] font-bold active:scale-95 transition border border-white/5 hover:bg-slate-800 flex items-center gap-2 shadow-lg">
+                <i class="fa-solid fa-rotate-right"></i> Refresh Feed
+             </button>
+        </div>
+
+        <div id="contentList" class="pb-10 min-h-[50vh]">
+            <!-- Skeletons -->
+            <div id="skeletons" class="px-4 space-y-5">
+                <div class="w-full h-80 bg-slate-800 rounded-3xl animate-pulse"></div>
+                <div class="w-full h-28 bg-slate-800 rounded-2xl animate-pulse"></div>
+                <div class="w-full h-28 bg-slate-800 rounded-2xl animate-pulse"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- READER MODAL -->
+    <div id="readerView" class="fixed inset-0 z-50 bg-[#0f172a] transform translate-y-full transition-transform duration-300 flex flex-col">
+        <!-- Reader Nav -->
+        <div class="absolute top-0 w-full p-4 pt-[max(1.5rem,env(safe-area-inset-top))] flex justify-between z-30">
+            <button onclick="closeReader()" class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center border border-white/10 active:scale-95 shadow-lg">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <button onclick="shareArticle()" class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center border border-white/10 active:scale-95 shadow-lg">
+                <i class="fa-solid fa-share-nodes"></i>
+            </button>
+        </div>
+
+        <!-- Hero Image -->
+        <div class="relative w-full h-[50vh] shrink-0">
+            <img id="rImg" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/20 to-transparent"></div>
+            
+            <div class="absolute bottom-0 left-0 w-full p-6 pb-12">
+                <span id="rSource" class="px-2 py-0.5 bg-blue-600 rounded text-[10px] font-bold uppercase tracking-wider text-white shadow-md mb-3 inline-block">Source</span>
+                <h1 id="rTitle" class="text-2xl md:text-3xl font-bold text-white leading-tight font-serif text-shadow-lg drop-shadow-md"></h1>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto px-5 bg-[#0f172a] -mt-10 relative z-20 rounded-t-[2.5rem] shadow-2xl">
+            <div class="w-12 h-1.5 bg-slate-700/50 rounded-full mx-auto mb-8 mt-4"></div>
+            
+            <div class="flex items-center gap-3 mb-8 border-b border-white/10 pb-6">
+                 <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Published</span>
+                    <span id="rTime" class="text-sm font-bold text-white">Just now</span>
+                </div>
+            </div>
+
+            <article id="rBody" class="article-body font-serif pb-24">
+                <!-- Text Injected Here -->
+            </article>
+            
+            <div class="pb-10">
+                <a id="rLink" href="#" target="_blank" class="block w-full text-center bg-slate-100 text-slate-900 font-bold py-4 rounded-xl shadow-lg active:scale-[0.98]">Read Full Article on Web</a>
+            </div>
         </div>
     </div>
 
+    <!-- BOTTOM NAV -->
+    <nav class="fixed bottom-0 w-full glass z-40 h-16 flex justify-around items-center border-t border-slate-800">
+        <button class="flex flex-col items-center gap-1 text-blue-500 active:scale-95 transition"><i class="fa-solid fa-layer-group text-lg"></i><span class="text-[9px] font-bold">Latest</span></button>
+        <button class="flex flex-col items-center gap-1 text-gray-500 active:scale-95 transition" onclick="alert('Bookmarks feature coming soon')"><i class="fa-solid fa-bookmark text-lg"></i><span class="text-[9px] font-bold">Saved</span></button>
+    </nav>
+
     <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const infoCard = document.getElementById('info-card');
-        const objectName = document.getElementById('object-name');
-        const objectDesc = document.getElementById('object-desc');
-        const confBadge = document.getElementById('confidence-badge');
-        const loader = document.getElementById('loader');
+        // ============================
+        // ROBUST CONFIGURATION
+        // ============================
+        // We use two proxies. If one fails, the other might work.
+        const PROXIES = [
+            "https://api.allorigins.win/get?url=",
+            "https://corsproxy.io/?"
+        ];
+        
+        const SOURCES = {
+            india: [
+                { name: "The Hindu", url: "https://www.thehindu.com/feeder/default.rss", color: "bg-red-800" } 
+            ],
+            world: [
+                { name: "CNN", url: "http://rss.cnn.com/rss/edition.rss", color: "bg-red-600" },
+                { name: "BBC", url: "https://feeds.bbci.co.uk/news/world/rss.xml", color: "bg-red-700" },
+                { name: "NY Times", url: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", color: "bg-slate-700" }
+            ]
+        };
 
-        let model;
-        let lastSpeakTime = 0;
-        let currentObject = "";
+        const BACKUP_DATA = [
+            {
+                title: "Live Feed Offline: Displaying Cached Update",
+                pubDate: new Date().toISOString(),
+                link: "#",
+                sourceName: "System",
+                sourceColor: "bg-gray-600",
+                image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800",
+                content: "<p>We couldn't connect to the live news server. Please check your internet connection and tap Refresh.</p>"
+            }
+        ];
 
-        // 1. Setup Camera (Environment/Rear Mode)
-        async function setupCamera() {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' },
-                audio: false
-            });
-            video.srcObject = stream;
-            return new Promise(resolve => {
-                video.onloadedmetadata = () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    resolve();
-                };
-            });
+        let state = {
+            region: 'india',
+            articles: [],
+            currentArticle: null
+        };
+
+        // ============================
+        // INITIALIZATION
+        // ============================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load Cache First (Instant)
+            const cached = localStorage.getItem(`nova_cache_${state.region}`);
+            if (cached) {
+                state.articles = JSON.parse(cached);
+                renderUI();
+            }
+            initApp();
+        });
+
+        function changeSource(r) {
+            state.region = r;
+            document.getElementById('tabInd').className = r === 'india' ? "px-4 py-1.5 rounded-md text-xs font-bold bg-blue-600 text-white transition-all shadow-lg" : "px-4 py-1.5 rounded-md text-xs font-bold text-gray-400 hover:text-white transition-all";
+            document.getElementById('tabWor').className = r === 'world' ? "px-4 py-1.5 rounded-md text-xs font-bold bg-blue-600 text-white transition-all shadow-lg" : "px-4 py-1.5 rounded-md text-xs font-bold text-gray-400 hover:text-white transition-all";
+            
+            // Show skeletons
+            document.getElementById('contentList').innerHTML = document.getElementById('skeletons').outerHTML;
+            initApp();
         }
 
-        // 2. Fetch Wikipedia Data
-        async function getWikiInfo(query) {
+        async function initApp(manual = false) {
+            setStatus("Fetching...", "bg-yellow-500", "text-yellow-500");
+            
             try {
-                const url = `https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro&explaintext&redirects=1&origin=*&titles=${query}`;
-                const res = await fetch(url);
-                const data = await res.json();
-                const pages = data.query.pages;
-                const pageId = Object.keys(pages)[0];
-                return pages[pageId].extract || "No details available.";
-            } catch (e) {
-                return "Could not connect to knowledge base.";
-            }
-        }
-
-        // 3. Main AI Loop
-        async function runAI() {
-            await setupCamera();
-            model = await cocoSsd.load();
-            loader.classList.add('hidden'); // Hide loader
-            
-            setInterval(detectFrame, 100); // Run detection every 100ms
-        }
-
-        async function detectFrame() {
-            const predictions = await model.detect(video);
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.font = '16px sans-serif';
-            ctx.lineWidth = 4;
-
-            // Filter for high confidence (> 66%)
-            const strongPredictions = predictions.filter(p => p.score > 0.66);
-
-            if (strongPredictions.length > 0) {
-                // Pick the most confident object
-                const best = strongPredictions[0];
+                const feeds = SOURCES[state.region];
                 
-                // Draw Box
-                ctx.strokeStyle = '#00f2ea';
-                ctx.strokeRect(...best.bbox);
+                // Fetch all feeds
+                const promises = feeds.map(src => fetchWithFallback(src));
+                const results = await Promise.all(promises);
                 
-                // Update UI only if it's a new object
-                if (best.class !== currentObject) {
-                    currentObject = best.class;
-                    objectName.innerText = best.class;
-                    confBadge.innerText = Math.round(best.score * 100) + "%";
-                    
-                    // Show "Thinking..." then fetch Wiki
-                    objectDesc.innerText = "Accessing Neural Database...";
-                    infoCard.classList.add('active');
-                    
-                    const info = await getWikiInfo(best.class);
-                    // Cut text to 150 chars
-                    objectDesc.innerText = info.substring(0, 150) + "...";
+                let merged = results.flat().sort((a, b) => b.timestamp - a.timestamp);
+                merged = [...new Map(merged.map(item => [item.title, item])).values()]; // Deduplicate
+
+                if(merged.length > 0) {
+                    state.articles = merged;
+                    localStorage.setItem(`nova_cache_${state.region}`, JSON.stringify(merged));
+                    renderUI();
+                    const label = state.region === 'india' ? "The Hindu Live" : "World Feed";
+                    setStatus(label, "bg-emerald-500", "text-emerald-400");
+                } else {
+                    throw new Error("Empty Feed");
                 }
-            } else {
-                // If nothing found for a while, hide card (optional logic)
-                // infoCard.classList.remove('active'); 
+
+            } catch (e) {
+                console.error("Fetch Error", e);
+                if(state.articles.length === 0) {
+                    state.articles = BACKUP_DATA;
+                    renderUI();
+                }
+                setStatus("Offline Mode", "bg-orange-500", "text-orange-400");
             }
         }
 
-        runAI();
+        // ============================
+        // REDUNDANT FETCH ENGINE
+        // ============================
+        async function fetchWithFallback(src) {
+            // Try Proxy 1
+            try {
+                return await fetchFeed(src, PROXIES[0]);
+            } catch (e) {
+                console.log("Proxy 1 failed, trying Proxy 2...");
+                try {
+                    return await fetchFeed(src, PROXIES[1]);
+                } catch(e2) {
+                    return [];
+                }
+            }
+        }
+
+        async function fetchFeed(src, proxy) {
+            // Add timestamp to prevent caching old data
+            const res = await fetch(`${proxy}${encodeURIComponent(src.url)}&t=${Date.now()}`);
+            if (!res.ok) throw new Error("Network Error");
+            
+            const data = await res.json();
+            const textContent = data.contents || data; // Handle different proxy formats
+            
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(textContent, "text/xml");
+            const items = Array.from(xml.querySelectorAll("item"));
+            
+            return items.map(item => parseXMLItem(item, src));
+        }
+
+        function parseXMLItem(item, source) {
+            const title = getTag(item, "title");
+            const pubDate = getTag(item, "pubDate");
+            const link = getTag(item, "link");
+            let rawDesc = getTag(item, "description") || getTag(item, "content:encoded") || "";
+            
+            // --- IMAGE EXTRACTION (CRITICAL FIX) ---
+            let img = null;
+            
+            // 1. Try Media Content
+            const media = item.getElementsByTagNameNS("*", "content");
+            if (media.length > 0) img = media[0].getAttribute("url");
+            
+            // 2. Try Enclosure
+            if (!img) {
+                const enc = item.querySelector("enclosure");
+                if (enc) img = enc.getAttribute("url");
+            }
+
+            // 3. Try parsing HTML in description
+            if (!img && rawDesc) {
+                const div = document.createElement('div');
+                div.innerHTML = rawDesc;
+                const i = div.querySelector('img');
+                if (i) img = i.src;
+            }
+            
+            // 4. Fallback
+            if (!img) img = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=60";
+
+            // --- CONTENT CLEANUP (CRITICAL FIX) ---
+            let cleanContent = rawDesc;
+            
+            // Remove Img tags (we use hero)
+            cleanContent = cleanContent.replace(/<img[^>]*>/gi, ""); 
+            // Remove "Read more" links
+            cleanContent = cleanContent.replace(/<a[^>]*>(Read more|Click here|Continue reading).*?<\/a>/gi, "");
+            // Remove scripts
+            cleanContent = cleanContent.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gm, "");
+            // Remove Location prefixes (e.g. "NEW DELHI: ")
+            cleanContent = cleanContent.replace(/^[A-Z\s]+:\s*/, "");
+            
+            if(!cleanContent.includes("<p>")) cleanContent = `<p>${cleanContent}</p>`;
+
+            return {
+                title, link,
+                timestamp: new Date(pubDate).getTime(),
+                timeAgo: timeAgo(pubDate),
+                image: img,
+                content: cleanContent,
+                sourceName: source.name,
+                sourceColor: source.color
+            };
+        }
+
+        function getTag(parent, tag) {
+            const el = parent.getElementsByTagName(tag)[0];
+            return el ? el.textContent.trim() : "";
+        }
+
+        function setStatus(text, dotColor, textColor) {
+            document.getElementById('statusDot').className = `w-1.5 h-1.5 rounded-full animate-pulse ${dotColor}`;
+            document.getElementById('statusText').innerText = text;
+            document.getElementById('statusText').className = `text-[10px] font-bold uppercase tracking-widest ${textColor}`;
+        }
+
+        // ============================
+        // UI RENDERING
+        // ============================
+        function renderUI() {
+            const list = document.getElementById('contentList');
+            list.innerHTML = "";
+
+            if(state.articles.length === 0) return;
+
+            // HERO
+            const hero = state.articles[0];
+            const heroDiv = document.createElement('div');
+            heroDiv.className = "px-4 mb-6 fade-in";
+            heroDiv.onclick = () => openReader(0);
+            heroDiv.innerHTML = `
+                <div class="relative w-full h-[24rem] rounded-[2rem] overflow-hidden shadow-2xl active:scale-[0.98] transition cursor-pointer group border border-white/5">
+                    <img src="${hero.image}" class="w-full h-full object-cover transition duration-700 group-hover:scale-105" onerror="this.src='https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=800'">
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/20 to-transparent"></div>
+                    <div class="absolute bottom-0 left-0 p-6 w-full">
+                        <span class="${hero.sourceColor} text-[10px] font-bold px-2 py-0.5 rounded text-white uppercase mb-3 inline-block shadow-md">${hero.sourceName}</span>
+                        <h2 class="text-white text-2xl font-bold leading-tight font-serif drop-shadow-xl text-balance">${hero.title}</h2>
+                        <p class="text-gray-300 text-xs mt-3 flex items-center gap-1"><i class="fa-regular fa-clock"></i> ${hero.timeAgo}</p>
+                    </div>
+                </div>
+            `;
+            list.appendChild(heroDiv);
+
+            // LIST
+            const grid = document.createElement('div');
+            grid.className = "px-4 space-y-4";
+            state.articles.slice(1, 20).forEach((item, idx) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = "flex gap-4 p-4 bg-slate-800/40 rounded-2xl border border-white/5 active:bg-slate-800/60 transition cursor-pointer fade-in";
+                itemDiv.style.animationDelay = `${idx * 0.05}s`;
+                itemDiv.onclick = () => openReader(idx + 1);
+                itemDiv.innerHTML = `
+                    <div class="w-24 h-24 bg-slate-700 rounded-xl shrink-0 overflow-hidden shadow-lg relative">
+                        <img src="${item.image}" loading="lazy" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800'">
+                    </div>
+                    <div class="flex-1 flex flex-col justify-between py-1">
+                        <div>
+                            <span class="text-[10px] font-bold text-blue-400 uppercase tracking-wide">${item.sourceName}</span>
+                            <h3 class="text-white font-bold text-[15px] leading-snug line-clamp-3 mt-1 font-serif text-slate-100">${item.title}</h3>
+                        </div>
+                        <span class="text-[10px] text-gray-500 font-medium">${item.timeAgo}</span>
+                    </div>
+                `;
+                grid.appendChild(itemDiv);
+            });
+            list.appendChild(grid);
+        }
+
+        // ============================
+        // READER LOGIC
+        // ============================
+        function openReader(idx) {
+            const item = state.articles[idx];
+            state.currentArticle = item;
+            
+            const modal = document.getElementById('readerView');
+            document.getElementById('rImg').src = item.image;
+            document.getElementById('rTitle').innerText = item.title;
+            document.getElementById('rSource').innerText = item.sourceName;
+            document.getElementById('rSource').className = `px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide text-white shadow-md ${item.sourceColor}`;
+            document.getElementById('rTime').innerText = item.timeAgo;
+            document.getElementById('rLink').href = item.link;
+            document.getElementById('rBody').innerHTML = item.content;
+            
+            // Append hint if short
+            if(item.content.length < 200) {
+                 document.getElementById('rBody').innerHTML += `
+                    <div class="mt-8 p-4 bg-slate-800/50 rounded-xl border-l-4 border-blue-500">
+                        <p class="text-sm italic text-gray-400 m-0">This feed provides a summary. Read full details on the publisher's site below.</p>
+                    </div>
+                 `;
+            }
+
+            modal.classList.remove('translate-y-full');
+        }
+
+        function closeReader() {
+            document.getElementById('readerView').classList.add('translate-y-full');
+        }
+
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            if(isNaN(seconds)) return "Just now";
+            if (seconds < 3600) return Math.floor(seconds/60) + "m ago";
+            if (seconds < 86400) return Math.floor(seconds/3600) + "h ago";
+            return "1d ago";
+        }
+        
+        function shareArticle() {
+             if(navigator.share && state.currentArticle) navigator.share({title: state.currentArticle.title, url: state.currentArticle.link});
+        }
     </script>
 </body>
 </html>
+
 
